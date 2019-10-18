@@ -40,8 +40,8 @@ STM32_Bootloader.bin \
 all: STM32_Bootloader.elf secondary-outputs
 
 # Tool invocations
-STM32_Bootloader.elf: $(OBJS) $(USER_OBJS) /home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader/STM32F401RETX_FLASH.ld
-	arm-none-eabi-gcc -o "STM32_Bootloader.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader/STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_Bootloader.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+STM32_Bootloader.elf: $(OBJS) $(USER_OBJS) /home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader/Bootloader/STM32F401RETX_FLASH.ld
+	arm-none-eabi-gcc -o "STM32_Bootloader.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader/Bootloader/STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_Bootloader.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

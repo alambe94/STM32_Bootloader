@@ -46,9 +46,10 @@
 #define SYNC_CHAR  '$'
 
 #define  RX_BUFFER_SIZE   (256)
+#define  TX_BUFFER_SIZE   (256)
 uint8_t  RX_Buffer[RX_BUFFER_SIZE];
+uint8_t  TX_Buffer[TX_BUFFER_SIZE];
 
-extern CRC_HandleTypeDef hcrc;
 extern UART_HandleTypeDef huart2;
 
 UART_HandleTypeDef* BL_UART = &huart2;
@@ -171,7 +172,33 @@ void Write_Callback(uint32_t address, const uint8_t *data, uint8_t len)
 
 void Read_Callback(uint32_t address, uint8_t len)
     {
-    // reading flash
+
+    uint8_t crc;
+    uint8_t* add_ptr = (uint8_t*)address;
+
+    if (address >= USER_FLASH_START_ADDRESS
+	    && address <= USER_FLASH_END_ADDRESS - len)
+	{
+
+	BL_UART_Send_Char(CMD_ACK);
+
+
+	for (uint8_t i = 0; i < len; i++)
+	    {
+	    TX_Buffer[i] = *add_ptr++;
+	    BL_UART_Send_Char(TX_Buffer[i]);
+	    }
+
+	crc = CRC8(TX_Buffer, len);
+
+	BL_UART_Send_Char(crc);
+
+	}
+    else
+	{
+	BL_UART_Send_Char(CMD_NACK);
+	}
+
     }
 
 void Erase_Callback()
