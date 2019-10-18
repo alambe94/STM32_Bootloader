@@ -5,6 +5,11 @@ import sys
 import time
 
 
+USER_APP_ADDRESS = 0x08008000
+SERIAL_PORT      = 'ACM0'
+BAUDRATE         = 38400
+
+
 CMD_WRITE = 0x50
 CMD_READ = 0x51
 CMD_ERASE = 0x52
@@ -21,7 +26,7 @@ CMD_HELP  = 0x40
 SYNC_CHAR  = ord('$')
 
 
-# Maxim APPLICATION NOTE 27 
+# Maxim APPLICATION NOTE 27
 
 CRC8_Table = [
 	0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
@@ -43,47 +48,43 @@ CRC8_Table = [
  ]
 
 def CRC8(data , len):
-    
     crc = 0
     for i in range(len):
         crc = CRC8_Table[crc ^ data[i]]
-        
+
     return crc
 
 def int_to_byte(data):
     return bytes([data])
- 
-def stm32_bl_send_cmd(cmd):
-         
-    crc = CRC8([cmd], 1)
-    
-    packet = bytes()
-    packet += int_to_byte(SYNC_CHAR)
-    packet += int_to_byte(2)
-    packet += int_to_byte(cmd)
-    packet += int_to_byte(crc)
 
-    ser.write(packet)
-        
-       
+def stm32_bl_send_cmd(cmd):
+    
+    crc = CRC8([cmd], 1)
+    ser.write(int_to_byte(SYNC_CHAR))
+    ser.write(int_to_byte(2))
+
+    ser.write(int_to_byte(cmd))
+    ser.write(int_to_byte(crc))
+	
+	
+
+
 def stm32_send_ack():
     ser.write(int_to_byte(CMD_ACK))
 
-    
+
 def stm32_read_line():
     rx_string = ser.readline().decode('utf-8')
     return rx_string
 
 def stm32_read_ack():
-    
     rx_char = ser.read(1)
-    
     if(rx_char == b''):
         return CMD_NACK
     else:
         return ord(rx_char)
-        
-    
+
+
 
 def stm32_erase():
     stm32_bl_send_cmd(CMD_ERASE)
@@ -131,13 +132,10 @@ def stm32_jump():
 
 
 def stm32_write():
-
     f_file_len = 0
     f_file_exist = False
     data_len = 128+64+32
-    stm32_app_address = 0x08008000
-
-    
+    stm32_app_address = USER_APP_ADDRESS
 
     try:
         f_file_len = os.path.getsize(bin_file)
@@ -148,14 +146,14 @@ def stm32_write():
         print("can not open " + bin_file)
 
     while(f_file_len >0):
-        
+
 
         if(f_file_len < data_len):
             data_len = f_file_len
 
         bl_packet = bytes()
         # payload structure 1-byte cmd + 4-byte addes + 1-byte data size + payload + 1-byte CRC
-        
+
         #assemble cmd
         bl_packet += int_to_byte(CMD_WRITE)
 
@@ -164,7 +162,7 @@ def stm32_write():
         bl_packet += int_to_byte(stm32_app_address >> 16 & 0xFF)
         bl_packet += int_to_byte(stm32_app_address >> 8 & 0xFF)
         bl_packet += int_to_byte(stm32_app_address >> 0 & 0xFF)
-        
+
         #assemble no of bytes to write
         bl_packet += int_to_byte(data_len)
 
@@ -174,28 +172,28 @@ def stm32_write():
 
         #assemble crc
         crc = CRC8(bl_packet, (data_len + 6))
-        
+
         bl_packet += int_to_byte(crc)
-        
-        
+
+
         ser.write(int_to_byte(SYNC_CHAR))
         ser.write(int_to_byte(data_len + 7))
         ser.write(bl_packet)
-        
+
         reply = stm32_read_ack()
         if(reply == CMD_ACK):
             print('flash write success at ' + hex(stm32_app_address))
         elif (reply == CMD_NACK):
             print('flash write error at ' + hex(stm32_app_address))
             break
-        
+
         f_file_len -= data_len
         stm32_app_address += data_len
         print("remaining bytes:{}".format(f_file_len))
-        
+
         if(f_file_len == 0):
             print("flash write successfull, jolly good!!!!")
-        
+
 
     if(f_file_exist):
         bin_file_data.close()
@@ -204,12 +202,12 @@ def stm32_write():
 
 
 ser_open = False
-port = 'ACM0'
-baud = 38400   
-    
+port = SERIAL_PORT
+baud = BAUDRATE
+
 if len(sys.argv) >= 2:
     cmd = sys.argv[1]
-    
+
     try:
         ser = serial.Serial("/dev/tty"+port, baud, timeout=5)
         ser_open = True
@@ -220,9 +218,9 @@ else:
 
 if ser_open:
     print("Port open success")
-    
+
     ack = stm32_read_ack()
-    
+
     if (ack == CMD_ACK):
         print("connected to target")
         stm32_send_ack()
@@ -232,20 +230,20 @@ if ser_open:
                 stm32_write()
                 stm32_jump()
             else:
-                print('please enter input file')  
+                print('please enter input file')
         elif(cmd == 'erase'):
-            stm32_erase()    
+            stm32_erase()
         elif(cmd == 'reset'):
-            stm32_reset() 
+            stm32_reset()
         elif(cmd == 'jump'):
-            stm32_jump()     
+            stm32_jump()
         elif(cmd == 'help'):
-            stm32_get_help()          
+            stm32_get_help()
         else:
             print("invalid cmd")
     else:
-        print("timeout error!! could not connect to target")    
-    
-    
+        print("timeout error!! could not connect to target")
+
+
 else:
     print("Port open failed")
