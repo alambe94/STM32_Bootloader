@@ -29,13 +29,13 @@
 #define USER_FLASH_START_ADDRESS (0x08008000)
 #define USER_FLASH_END_ADDRESS   (0x08008000 + 480000) // 32KB used by bootloader remaing 48K
 
-#define CMD_WRITE  0x50
-#define CMD_READ   0x51
-#define CMD_ERASE  0x52
-#define CMD_RESET  0x53
-#define CMD_JUMP   0x54
-#define CMD_VERIFY 0x55
-
+#define CMD_WRITE     0x50
+#define CMD_READ      0x51
+#define CMD_ERASE     0x52
+#define CMD_RESET     0x53
+#define CMD_JUMP      0x54
+#define CMD_VERIFY    0x55
+#define CMD_FAST_READ 0x56
 
 #define CMD_ACK    0x90
 #define CMD_NACK   0x91
@@ -201,6 +201,31 @@ void Read_Callback(uint32_t address, uint8_t len)
 
     }
 
+
+void Fast_Read_Callback(uint32_t address, uint32_t len)
+    {
+
+    uint8_t* add_ptr = (uint8_t*)address;
+
+    if (address >= USER_FLASH_START_ADDRESS
+	    && address <= USER_FLASH_END_ADDRESS - len)
+	{
+
+	BL_UART_Send_Char(CMD_ACK);
+
+	for (uint32_t i = 0; i < len; i++)
+	    {
+	    BL_UART_Send_Char(*add_ptr++);
+	    }
+
+	}
+    else
+	{
+	BL_UART_Send_Char(CMD_NACK);
+	}
+
+    }
+
 void Erase_Callback()
     {
 
@@ -298,6 +323,8 @@ void Bootloader()
     uint32_t verify_address = 0;
     uint8_t verify_len = 0;
 
+    uint32_t fast_read_len = 0;
+
     while (1)
 	{
 
@@ -341,7 +368,7 @@ void Bootloader()
 
 				write_address = RX_Buffer[1] << 24|
 				                RX_Buffer[2] << 16|
-				                RX_Buffer[3] << 8|
+				                RX_Buffer[3] << 8 |
 				                RX_Buffer[4] << 0;
 
 				write_len = RX_Buffer[5]; // number of bytes to write
@@ -352,9 +379,10 @@ void Bootloader()
 
 			    case CMD_READ:
 
-				read_address = RX_Buffer[1] << 24
-					| RX_Buffer[2] << 16 | RX_Buffer[3] << 8
-					| RX_Buffer[4] << 0;
+				read_address = RX_Buffer[1] << 24 |
+				               RX_Buffer[2] << 16 |
+					       RX_Buffer[3] << 8  |
+					       RX_Buffer[4] << 0;
 
 				read_len = RX_Buffer[5];
 
@@ -375,9 +403,10 @@ void Bootloader()
 
 			    case CMD_VERIFY:
 
-				verify_address = RX_Buffer[1] << 24
-					| RX_Buffer[2] << 16 | RX_Buffer[3] << 8
-					| RX_Buffer[4] << 0;
+				verify_address = RX_Buffer[1] << 24 |
+				                 RX_Buffer[2] << 16 |
+						 RX_Buffer[3] << 8  |
+						 RX_Buffer[4] << 0;
 
 				verify_len = RX_Buffer[5];
 
@@ -388,6 +417,22 @@ void Bootloader()
 			    case CMD_HELP:
 				Help_Callback();
 				break;
+
+			    case CMD_FAST_READ:
+
+				read_address = RX_Buffer[1] << 24 |
+				               RX_Buffer[2] << 16 |
+					       RX_Buffer[3] << 8  |
+					       RX_Buffer[4] << 0;
+
+				fast_read_len = RX_Buffer[5] << 24 |
+					        RX_Buffer[6] << 16 |
+						RX_Buffer[7] << 8  |
+					        RX_Buffer[8] << 0;
+
+
+			        Fast_Read_Callback(read_address, fast_read_len);
+			    	break;
 
 			    default:
 				//print CMD_ERROR

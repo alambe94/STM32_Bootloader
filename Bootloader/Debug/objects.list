@@ -15,7 +15,6 @@
 "Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.o"
 "Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.o"
 "Src/bootloader.o"
-"Src/dma.o"
 "Src/gpio.o"
 "Src/main.o"
 "Src/printf.o"
