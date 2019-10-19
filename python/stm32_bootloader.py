@@ -6,8 +6,8 @@ import time
 
 
 USER_APP_ADDRESS = 0x08008000
-SERIAL_PORT = 'ACM0'
-BAUDRATE = 250000
+SERIAL_PORT = 'USB0'
+BAUDRATE = 115200
 FLASH_SIZE = 480000
 
 
@@ -233,7 +233,7 @@ def stm32_fast_read_flash():
     # assemble crc
     crc = CRC8(packet, 9)
     packet += int_to_byte(crc)
-    
+
     print(packet)
 
     ser.write(int_to_byte(SYNC_CHAR))
@@ -248,7 +248,7 @@ def stm32_fast_read_flash():
         for i in range(100):
             rcvd_file += ser.read(int(read_len/100))
             print(str(i) + '%')
-            
+
 
         print("flash read successfull, jolly good!!!!")
 
@@ -315,6 +315,7 @@ def stm32_write():
         ser.write(bl_packet)
 
         reply = stm32_read_ack()
+        print(reply)
         if(reply == CMD_ACK):
             print('flash write success at ' + hex(stm32_app_address))
         elif (reply == CMD_NACK):
@@ -350,7 +351,7 @@ else:
 
 if ser_open:
     print("Port open success")
-    
+
     ack = stm32_read_ack()
 
     if (ack == CMD_ACK):

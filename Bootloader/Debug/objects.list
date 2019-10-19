@@ -17,7 +17,6 @@
 "Src/bootloader.o"
 "Src/gpio.o"
 "Src/main.o"
-"Src/printf.o"
 "Src/stm32f4xx_hal_msp.o"
 "Src/stm32f4xx_it.o"
 "Src/sys.o"

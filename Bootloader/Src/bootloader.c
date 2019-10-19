@@ -10,7 +10,6 @@
 #include "stm32f4xx_hal.h"
 #include "string.h"
 #include "stdlib.h"
-#include "printf.h"
 
 
 /**
@@ -27,7 +26,7 @@
 #define BL_USED_SECTORS  2 // 16KB + 16KB
 
 #define USER_FLASH_START_ADDRESS (0x08008000)
-#define USER_FLASH_END_ADDRESS   (0x08008000 + 480000) // 32KB used by bootloader remaing 48K
+#define USER_FLASH_END_ADDRESS   (0x08008000 + 480000) // 32KB used by bootloader remaing 480K
 
 #define CMD_WRITE     0x50
 #define CMD_READ      0x51
@@ -49,6 +48,7 @@
 #define  TX_BUFFER_SIZE   (256)
 uint8_t  RX_Buffer[RX_BUFFER_SIZE];
 uint8_t  TX_Buffer[TX_BUFFER_SIZE];
+
 
 extern UART_HandleTypeDef huart2;
 
@@ -113,34 +113,50 @@ void BL_UART_Send_String(char* data)
 
     }
 
-void Write_Callback(uint32_t address, const uint8_t *data, uint8_t len)
+void Write_Callback(uint32_t address, const uint8_t *data, uint32_t len)
     {
 
     uint8_t status = 1;
+
+    uint32_t Aligned_Word[1];
+
+    uint8_t *byte_ptr = (uint8_t*) Aligned_Word;
 
     if (address >= USER_FLASH_START_ADDRESS
 	    && address <= USER_FLASH_END_ADDRESS - len)
 	{
 
+	if (len % 4 != 0)
+	    {
+	    len += (len % 4);
+	    }
+
 	/* Unlock the Flash to enable the flash control register access *************/
 	HAL_FLASH_Unlock();
 
-	for (uint8_t i = 0; i < len; i++)
+	for (uint32_t i = 0; i < len/4 ; i++)
 	    {
 
-	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, address,
-		    (uint64_t) *data) == HAL_OK)
+	    // forced aligned start
+	    byte_ptr[0] = data[0];
+	    byte_ptr[1] = data[1];
+	    byte_ptr[2] = data[2];
+	    byte_ptr[3] = data[3];
+	    // forced aligned end
+
+	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address,
+		    Aligned_Word[0]) == HAL_OK)
 		{
 		/* Check the written value */
-		if (*(uint8_t*) address != (*data))
+		if (*(uint32_t*) address != Aligned_Word[0])
 		    {
 		    /* Flash content doesn't match SRAM content */
 		    status = 0;
 		    break;
 		    }
 		/* Increment FLASH destination address */
-		address++;
-		data++;
+		address += 4;
+		data += 4;
 		}
 	    else
 		{
@@ -153,15 +169,15 @@ void Write_Callback(uint32_t address, const uint8_t *data, uint8_t len)
 	/* Lock the Flash to disable the flash control register access (recommended
 	 to protect the FLASH memory against possible unwanted operation) *********/
 	HAL_FLASH_Lock();
+	}
+    else
+	{
+	status = 0;
+	}
 
-	if (status)
-	    {
-	    BL_UART_Send_Char(CMD_ACK);
-	    }
-	else
-	    {
-	    BL_UART_Send_Char(CMD_NACK);
-	    }
+    if (status)
+	{
+	BL_UART_Send_Char(CMD_ACK);
 	}
     else
 	{
@@ -466,6 +482,7 @@ void BL_Main_Loop()
 	}
     else
 	{
+	// jump to user application
 	Jump_Callback();
 	}
     }
