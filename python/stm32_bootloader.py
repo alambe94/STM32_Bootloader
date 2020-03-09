@@ -6,8 +6,8 @@ import time
 
 
 USER_APP_ADDRESS = 0x08008000
-SERIAL_PORT = 'ACM0'
-BAUDRATE = 1800000
+SERIAL_PORT = 'ACM1'
+BAUDRATE = 115200
 FLASH_SIZE = 480000
 
 
@@ -320,10 +320,10 @@ if len(sys.argv) >= 2:
     cmd = sys.argv[1]
     
     try:
-        ser = serial.Serial("/dev/tty"+port, baud, timeout=1)
+        ser = serial.Serial("/dev/tty"+port, baud, timeout=5)
         ser_open = True
     except:
-        print("\n Not valid port")
+        print("Not valid port")
 else:
     print("please enter cmd and optional input file")
 
@@ -334,7 +334,7 @@ if ser_open:
         if len(sys.argv) >= 3:
             bin_file = sys.argv[2]
             stm32_write()
-            stm32_jump()
+            #stm32_jump()
         else:
             print('please enter input file')
     elif(cmd == 'erase'):

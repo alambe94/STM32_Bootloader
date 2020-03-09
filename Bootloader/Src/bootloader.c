@@ -163,7 +163,7 @@ void Write_Callback(uint32_t address, const uint8_t *data, uint32_t len)
 		    }
 		/* Increment FLASH destination address */
 		address += 4;
-		aligned_data ++;
+		aligned_data++;
 		}
 	    else
 		{
@@ -243,6 +243,7 @@ void Erase_Callback()
 void Reset_Callback()
     {
     // reset mcu
+    BL_UART_Send_Char(CMD_ACK);
     HAL_NVIC_SystemReset();
     }
 
@@ -304,7 +305,7 @@ uint8_t BL_Erase_Flash()
     flash_erase_handle.TypeErase = FLASH_TYPEERASE_SECTORS;
     flash_erase_handle.Banks = FLASH_BANK_1;
     flash_erase_handle.Sector = BL_USED_SECTORS;
-    flash_erase_handle.NbSectors = BL_TOTAL_SECTORS - BL_USED_SECTORS;
+    flash_erase_handle.NbSectors = (BL_TOTAL_SECTORS - BL_USED_SECTORS);
     flash_erase_handle.VoltageRange = FLASH_VOLTAGE_RANGE_3;
 #endif
 
