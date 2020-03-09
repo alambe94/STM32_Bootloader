@@ -7,7 +7,7 @@ import time
 
 USER_APP_ADDRESS = 0x08008000
 SERIAL_PORT = 'ACM0'
-BAUDRATE = 115200
+BAUDRATE = 1800000
 FLASH_SIZE = 480000
 
 
@@ -48,6 +48,8 @@ CRC8_Table = [
     116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53
 ]
 
+
+millis = lambda: int(round(time.time() * 1000))
 
 def CRC8(data, len):
     crc = 0
@@ -137,6 +139,9 @@ def stm32_jump():
 
 
 def stm32_read_flash():
+    
+    start = millis()
+    
     bytes_to_read = 248
     read_len = FLASH_SIZE
     stm32_app_address = USER_APP_ADDRESS
@@ -212,10 +217,14 @@ def stm32_read_flash():
 
             except(OSError):
                 print("can not open " + bin_file)
+                
+    elapsed_time = millis() - start
+    print("elapsed time = {}ms".format(int(elapsed_time)))
+    print("read speed = {}kB/S".format(int((len*1000)/(8*elapsed_time))))            
 
 def stm32_write():
     
-    start = time.time()
+    start = millis()
     
     f_file_len = 0
     f_file_exist = False
@@ -297,9 +306,9 @@ def stm32_write():
         bin_file_data.close()
         print("closing file")
     
-    elapsed_time = time.time() - start
-    print("elapsed time = {}s".format(int(elapsed_time)))
-    print("write speed = {} bytes per second".format(int(f_file_size/elapsed_time)))
+    elapsed_time = millis() - start
+    print("elapsed time = {}ms".format(int(elapsed_time)))
+    print("write speed = {}kB/S".format(int((f_file_size*1000)/(8*elapsed_time)))) 
 
 
 ser_open = False

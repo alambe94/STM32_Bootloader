@@ -22,11 +22,11 @@
  *  Programaing voltage- 2.7v to 3.3v.
  *  Flash writing width - double word.
  */
-#define PAGE_SIZE 2048    // 2KB
+#define BL_PAGE_SIZE 2048    // 2KB
 #define BL_TOTAL_PAGES 255// 255*2KB
 #define BL_USED_PAGES  16 // 16*2KB
 
-#define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_PAGES*PAGE_SIZE)
+#define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_PAGES*BL_PAGE_SIZE)
 #define USER_FLASH_END_ADDRESS   (0x08000000 + 512*1024)
 
 #endif
