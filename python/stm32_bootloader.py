@@ -6,10 +6,7 @@ import time
 
 
 USER_APP_ADDRESS = 0x08008000
-SERIAL_PORT = 'ACM1'
-BAUDRATE = 115200
 FLASH_SIZE = 480000
-
 
 CMD_WRITE = 0x50
 CMD_READ = 0x51
@@ -92,6 +89,13 @@ def stm32_read_ack():
 
 def stm32_erase():
     stm32_bl_send_cmd(CMD_ERASE)
+
+    print("erasing", end='')
+    
+    for i in range(10):
+        print(".", end='')
+        time.sleep(0.01)
+
     reply = stm32_read_ack()
     if(reply == CMD_ACK):
         print('flash erase success')
@@ -154,14 +158,16 @@ def stm32_read_flash():
 
         bl_packet = bytes()
         rcvd_packet = bytes()
-        # payload structure 1-byte cmd + 1-byte data size + 0x00 + 0x00 + 4-byte addes  + payload + 1-byte CRC
+
+        # payload structure 1-byte cmd + payload_length + 0x00 + 0x00 + 4-byte addes  + payload + 1-byte CRC
 
         # assemble cmd
         bl_packet += int_to_bytes(CMD_READ)
         
-        # assemble no of bytes to read
+        # no char to receive from stm32
         bl_packet += int_to_bytes(bytes_to_read)
-        
+
+        # 2 bytes padding for stm32 word alignment
         bl_packet += int_to_bytes(0x00)
         bl_packet += int_to_bytes(0x00)
 
@@ -181,6 +187,7 @@ def stm32_read_flash():
         ser.write(int_to_bytes(SYNC_CHAR))
         
         # send no chars in bl_packet
+        # 0bytes payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
         ser.write(int_to_bytes(9))  # total bytes in bl_packet
         
         # send bl_packet
@@ -228,7 +235,8 @@ def stm32_write():
     
     f_file_len = 0
     f_file_exist = False
-    data_block = 240
+    f_file_size = 0
+    payload_length = 240
     stm32_app_address = USER_APP_ADDRESS
 
     try:
@@ -243,18 +251,19 @@ def stm32_write():
 
     while(f_file_len > 0):
 
-        if(f_file_len < data_block):
-            data_block = f_file_len
+        if(f_file_len < payload_length):
+            payload_length = f_file_len
 
         bl_packet = bytes()
-        # payload structure 1-byte cmd + 1-byte data size + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
+        # payload structure 1-byte cmd + 1 byte payload lenth + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
 
         # assemble cmd
         bl_packet += int_to_bytes(CMD_WRITE)
+
+        # no char to flash to stm32
+        bl_packet += int_to_bytes(payload_length)
         
-        # assemble no of bytes to write
-        bl_packet += int_to_bytes(data_block)
-        
+        # 2 bytes padding for stm32 word alignment
         bl_packet += int_to_bytes(0x00)
         bl_packet += int_to_bytes(0x00)
         
@@ -265,11 +274,11 @@ def stm32_write():
         bl_packet += int_to_bytes(stm32_app_address >> 0 & 0xFF)
                 
         # assemble payload
-        for x in range(data_block):
+        for x in range(payload_length):
             bl_packet += bin_file_data.read(1)
 
         # calculate crc
-        crc = CRC8(bl_packet, (data_block + 8))
+        crc = CRC8(bl_packet, (payload_length + 8))
 
         # assemble crc
         bl_packet += int_to_bytes(crc)
@@ -282,7 +291,8 @@ def stm32_write():
         ser.write(int_to_bytes(SYNC_CHAR))
         
         # send no char in bl_packet
-        ser.write(int_to_bytes(data_block + 9))
+        # payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
+        ser.write(int_to_bytes(payload_length + 9))
         
         # send bl_packet
         ser.write(bl_packet)
@@ -295,8 +305,8 @@ def stm32_write():
             print('flash write error at ' + hex(stm32_app_address))
             break
 
-        f_file_len -= data_block
-        stm32_app_address += data_block
+        f_file_len -= payload_length
+        stm32_app_address += payload_length
         print("remaining bytes:{}".format(f_file_len))
 
         if(f_file_len == 0):
@@ -308,31 +318,31 @@ def stm32_write():
     
     elapsed_time = millis() - start
     print("elapsed time = {}ms".format(int(elapsed_time)))
-    print("read speed = {}kB/S".format(int(f_file_size/elapsed_time)))
+    print("read speed = {}kB/S".format(int(f_file_size/1+elapsed_time)))
 
 
 ser_open = False
-port = SERIAL_PORT
-baud = BAUDRATE
 
-if len(sys.argv) >= 2:
+if len(sys.argv) >= 3:
     
-    cmd = sys.argv[1]
+    port = sys.argv[1]
+    baud = int(sys.argv[2])
+    cmd  = sys.argv[3]
     
     try:
-        ser = serial.Serial("/dev/tty"+port, baud, timeout=5)
+        ser = serial.Serial(port, baud, timeout=10)
         ser_open = True
     except:
         print("Not valid port")
 else:
-    print("please enter cmd and optional input file")
+    print("please enter port, baud, cmd and optional input file")
 
 if ser_open:
     print("Port open success")
 
     if(cmd == 'write'):
-        if len(sys.argv) >= 3:
-            bin_file = sys.argv[2]
+        if len(sys.argv) >= 4:
+            bin_file = sys.argv[4]
             stm32_write()
             #stm32_jump()
         else:

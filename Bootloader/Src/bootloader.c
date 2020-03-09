@@ -11,6 +11,8 @@
 #include "stdlib.h"
 #include "main.h"
 
+#define ENABLE_CRC 1
+
 #ifdef STM32F103xE
 #include "stm32f1xx_hal.h"
 /**
@@ -22,7 +24,7 @@
  *  Programaing voltage- 2.7v to 3.3v.
  *  Flash writing width - double word.
  */
-#define BL_PAGE_SIZE 2048    // 2KB
+#define BL_PAGE_SIZE   2048    // 2KB
 #define BL_TOTAL_PAGES 255// 255*2KB
 #define BL_USED_PAGES  16 // 16*2KB
 
@@ -53,6 +55,27 @@
 #endif
 
 
+#ifdef STM32F407xx
+#include "stm32f4xx_hal.h"
+/**
+ *  STM32F407xx -- 1024K total flash.
+ *  Bootloader resides in sector 0,1 -- 16KB + 16KB Flash.
+ *  Total sectors in 401RE are 8.
+ *  Sectors to erase 6, except sector 0,1 (bootloader).
+ *  Erase type- sector by sector.
+ *  Programaing voltage- 2.7v to 3.3v.
+ *  Flash writing width - byte by byte for 2.7v to 3.3v.
+ */
+#define BL_SECTOR_SIZE   (16*1024) //16KB
+#define BL_TOTAL_SECTORS 12 // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB...128KB
+#define BL_USED_SECTORS  2 // 16KB + 16KB
+
+#define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS*BL_SECTOR_SIZE)
+#define USER_FLASH_END_ADDRESS   (0x08000000 + 1024*1024) // 32KB used by bootloader remaing
+
+#endif
+
+
 #define CMD_WRITE  0x50
 #define CMD_READ   0x51
 #define CMD_ERASE  0x52
@@ -68,12 +91,9 @@
 
 #define SYNC_CHAR  '$'
 
-#define  DATA_LEN  (128)
-#define  FRAME_LEN (DATA_LEN + 12)
-
-#define  RX_BUFFER_SIZE   (FRAME_LEN)
-
+#define  RX_BUFFER_SIZE   (255)
 #define  TX_BUFFER_SIZE   (255)
+
 uint8_t  RX_Buffer[RX_BUFFER_SIZE];
 uint8_t  TX_Buffer[TX_BUFFER_SIZE];
 
@@ -299,9 +319,7 @@ uint8_t BL_Erase_Flash()
     flash_erase_handle.Banks = FLASH_BANK_1;
     flash_erase_handle.NbPages = (BL_TOTAL_PAGES - BL_USED_PAGES);
     flash_erase_handle.PageAddress = USER_FLASH_START_ADDRESS;
-#endif
-
-#ifdef STM32F401xE
+#else
     flash_erase_handle.TypeErase = FLASH_TYPEERASE_SECTORS;
     flash_erase_handle.Banks = FLASH_BANK_1;
     flash_erase_handle.Sector = BL_USED_SECTORS;
@@ -332,8 +350,6 @@ void Bootloader()
 
 	memset(RX_Buffer, 0x00, RX_BUFFER_SIZE);
 
-
-
 	/* wait for sync char*/
 	if (HAL_UART_Receive(BL_UART, RX_Buffer, 1, HAL_MAX_DELAY)
 		== HAL_OK)
@@ -353,10 +369,10 @@ void Bootloader()
 		    if (HAL_UART_Receive(BL_UART, RX_Buffer, packet_len, 1000) == HAL_OK)
 			{
 
-			//frame structure 1-byte cmd + 1-byte data size + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
+			//frame structure 1-byte cmd + 1 byte payload len + 0x00 + 0x00 + 4-byte address +  payload + 1-byte CRC
 
 			uint8_t cmd = RX_Buffer[0];
-			len = RX_Buffer[1]; // number of bytes to write or read if any
+			len = RX_Buffer[1];
 
 			/* dont care*/
 			(void)RX_Buffer[2];
@@ -365,11 +381,13 @@ void Bootloader()
 			/* last byte is crc*/
 			uint8_t crc_recvd = RX_Buffer[packet_len - 1];
 
+#if(ENABLE_CRC == 1)
 			/* calculate crc */
 			uint8_t crc_calc = CRC8(RX_Buffer, (packet_len - 1));
-			//uint8_t crc_calc = crc_recvd;
-
 			//crc_calc = HAL_CRC_Calculate(&hcrc, (uint32_t*)RX_Buffer, (packet_len - 1));
+#else
+			uint8_t crc_calc = crc_recvd;
+#endif
 
 			address = RX_Buffer[4] << 24|
 			          RX_Buffer[5] << 16|
