@@ -40,8 +40,8 @@ STM32_Bootloader_Blinky.bin \
 all: STM32_Bootloader_Blinky.elf secondary-outputs
 
 # Tool invocations
-STM32_Bootloader_Blinky.elf: $(OBJS) $(USER_OBJS) /home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader_Blinky/STM32F401RETX_FLASH.ld
-	arm-none-eabi-gcc -o "STM32_Bootloader_Blinky.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader_Blinky/STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_Bootloader_Blinky.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+STM32_Bootloader_Blinky.elf: $(OBJS) $(USER_OBJS) /home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader/Blinky/STM32F401RETX_FLASH.ld
+	arm-none-eabi-gcc -o "STM32_Bootloader_Blinky.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"/home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader/Blinky/STM32F401RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="STM32_Bootloader_Blinky.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

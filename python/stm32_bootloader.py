@@ -7,7 +7,7 @@ import time
 
 USER_APP_ADDRESS = 0x08008000
 SERIAL_PORT = 'ACM0'
-BAUDRATE = 250000
+BAUDRATE = 115200
 FLASH_SIZE = 480000
 
 
@@ -17,7 +17,6 @@ CMD_ERASE = 0x52
 CMD_RESET = 0x53
 CMD_JUMP = 0x54
 CMD_VERIFY = 0x55
-CMD_FAST_READ = 0x56
 
 CMD_ACK = 0x90
 CMD_NACK = 0x91
@@ -58,22 +57,22 @@ def CRC8(data, len):
     return crc
 
 
-def int_to_byte(data):
+def int_to_bytes(data):
     return bytes([data])
 
 
 def stm32_bl_send_cmd(cmd):
 
     crc = CRC8([cmd], 1)
-    ser.write(int_to_byte(SYNC_CHAR))
-    ser.write(int_to_byte(2))
+    ser.write(int_to_bytes(SYNC_CHAR))
+    ser.write(int_to_bytes(2))
 
-    ser.write(int_to_byte(cmd))
-    ser.write(int_to_byte(crc))
+    ser.write(int_to_bytes(cmd))
+    ser.write(int_to_bytes(crc))
 
 
 def stm32_send_ack():
-    ser.write(int_to_byte(CMD_ACK))
+    ser.write(int_to_bytes(CMD_ACK))
 
 
 def stm32_read_line():
@@ -138,51 +137,61 @@ def stm32_jump():
 
 
 def stm32_read_flash():
-    data_block = 248
+    bytes_to_read = 248
     read_len = FLASH_SIZE
     stm32_app_address = USER_APP_ADDRESS
     rcvd_file = bytes()
 
     while(read_len > 0):
 
-        if(read_len < data_block):
-            data_block = read_len
+        if(read_len < bytes_to_read):
+            bytes_to_read = read_len
 
-        packet = bytes()
+        bl_packet = bytes()
         rcvd_packet = bytes()
-        # payload structure 1-byte cmd + 4-byte addes + 1-byte data size + payload + 1-byte CRC
+        # payload structure 1-byte cmd + 1-byte data size + 0x00 + 0x00 + 4-byte addes  + payload + 1-byte CRC
 
         # assemble cmd
-        packet += int_to_byte(CMD_READ)
+        bl_packet += int_to_bytes(CMD_READ)
+        
+        # assemble no of bytes to read
+        bl_packet += int_to_bytes(bytes_to_read)
+        
+        bl_packet += int_to_bytes(0x00)
+        bl_packet += int_to_bytes(0x00)
 
         # assemble address
-        packet += int_to_byte(stm32_app_address >> 24 & 0xFF)
-        packet += int_to_byte(stm32_app_address >> 16 & 0xFF)
-        packet += int_to_byte(stm32_app_address >> 8 & 0xFF)
-        packet += int_to_byte(stm32_app_address >> 0 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 24 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 16 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 8 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 0 & 0xFF)
 
-        # assemble no of bytes to read
-        packet += int_to_byte(data_block)
-
+        # calculate crc
+        crc = CRC8(bl_packet, 8)
+        
         # assemble crc
-        crc = CRC8(packet, 6)
-        packet += int_to_byte(crc)
+        bl_packet += int_to_bytes(crc)
 
-        ser.write(int_to_byte(SYNC_CHAR))
-        ser.write(int_to_byte(7))  # total bytes in packet
-        ser.write(packet)
+        # send sync char
+        ser.write(int_to_bytes(SYNC_CHAR))
+        
+        # send no chars in bl_packet
+        ser.write(int_to_bytes(9))  # total bytes in bl_packet
+        
+        # send bl_packet
+        ser.write(bl_packet)
 
         reply = stm32_read_ack()
 
         if(reply == CMD_ACK):
-            rcvd_packet = ser.read(data_block)
+            rcvd_packet = ser.read(bytes_to_read)
             crc_recvd = ord(ser.read(1))
-            crc_calc = CRC8(rcvd_packet, data_block)
+            crc_calc = CRC8(rcvd_packet, bytes_to_read)
             if(crc_recvd == crc_calc):
                 rcvd_file += rcvd_packet
                 print('flash read succsess at ' + hex(stm32_app_address))
-                read_len -= data_block
-                stm32_app_address += data_block
+                read_len -= bytes_to_read
+                stm32_app_address += bytes_to_read
                 print("remaining bytes:{}".format(read_len))
             else:
                 print("crc mismatch")
@@ -204,77 +213,19 @@ def stm32_read_flash():
             except(OSError):
                 print("can not open " + bin_file)
 
-
-def stm32_fast_read_flash():
-
-    read_len = FLASH_SIZE
-    stm32_app_address = USER_APP_ADDRESS
-
-    rcvd_file = bytes()
-
-    packet = bytes()
-    # payload structure 1-byte cmd + 4-byte addes + 4-byte data size + 1-byte CRC
-
-    # assemble cmd
-    packet += int_to_byte(CMD_FAST_READ)
-
-    # assemble address
-    packet += int_to_byte(stm32_app_address >> 24 & 0xFF)
-    packet += int_to_byte(stm32_app_address >> 16 & 0xFF)
-    packet += int_to_byte(stm32_app_address >> 8 & 0xFF)
-    packet += int_to_byte(stm32_app_address >> 0 & 0xFF)
-
-    # assemble no of bytes to read
-    packet += int_to_byte((read_len >> 24) & 0xFF)
-    packet += int_to_byte((read_len >> 16) & 0xFF)
-    packet += int_to_byte((read_len >> 8) & 0xFF)
-    packet += int_to_byte((read_len >> 0) & 0xFF)
-
-    # assemble crc
-    crc = CRC8(packet, 9)
-    packet += int_to_byte(crc)
-
-    print(packet)
-
-    ser.write(int_to_byte(SYNC_CHAR))
-    ser.write(int_to_byte(10))  # total bytes in packet
-    ser.write(packet)
-
-    reply = stm32_read_ack()
-    print(reply)
-
-    if(reply == CMD_ACK):
-        print('acked')
-        for i in range(100):
-            rcvd_file += ser.read(int(read_len/100))
-            print(str(i) + '%')
-
-
-        print("flash read successfull, jolly good!!!!")
-
-        try:
-            read_file_data = open("read_file.bin", 'wb')
-            read_file_data.write(rcvd_file)
-            read_file_data.close()
-
-            len = os.path.getsize("read_file.bin")
-            print("file size " + str(len))
-
-        except(OSError):
-            print("can not open " + bin_file)
-
-    elif (reply == CMD_NACK):
-        print('flash read error')
-
-
 def stm32_write():
+    
+    start = time.time()
+    
     f_file_len = 0
     f_file_exist = False
-    data_block = 248
+    data_block = 240
     stm32_app_address = USER_APP_ADDRESS
 
     try:
         f_file_len = os.path.getsize(bin_file)
+        f_file_size = f_file_len
+        print("opening file...")
         print("file size " + str(f_file_len))
         bin_file_data = open(bin_file, 'rb')
         f_file_exist = True
@@ -287,35 +238,48 @@ def stm32_write():
             data_block = f_file_len
 
         bl_packet = bytes()
-        # payload structure 1-byte cmd + 4-byte addes + 1-byte data size + payload + 1-byte CRC
+        # payload structure 1-byte cmd + 1-byte data size + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
 
         # assemble cmd
-        bl_packet += int_to_byte(CMD_WRITE)
-
-        # assemble address
-        bl_packet += int_to_byte(stm32_app_address >> 24 & 0xFF)
-        bl_packet += int_to_byte(stm32_app_address >> 16 & 0xFF)
-        bl_packet += int_to_byte(stm32_app_address >> 8 & 0xFF)
-        bl_packet += int_to_byte(stm32_app_address >> 0 & 0xFF)
-
+        bl_packet += int_to_bytes(CMD_WRITE)
+        
         # assemble no of bytes to write
-        bl_packet += int_to_byte(data_block)
-
+        bl_packet += int_to_bytes(data_block)
+        
+        bl_packet += int_to_bytes(0x00)
+        bl_packet += int_to_bytes(0x00)
+        
+        # assemble address
+        bl_packet += int_to_bytes(stm32_app_address >> 24 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 16 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 8 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 0 & 0xFF)
+                
         # assemble payload
         for x in range(data_block):
             bl_packet += bin_file_data.read(1)
 
+        # calculate crc
+        crc = CRC8(bl_packet, (data_block + 8))
+
         # assemble crc
-        crc = CRC8(bl_packet, (data_block + 6))
-
-        bl_packet += int_to_byte(crc)
-
-        ser.write(int_to_byte(SYNC_CHAR))
-        ser.write(int_to_byte(data_block + 7))
+        bl_packet += int_to_bytes(crc)
+        
+        #print(list(bl_packet))
+        
+        print("writing to serial port")
+        
+        # send sync char
+        ser.write(int_to_bytes(SYNC_CHAR))
+        
+        # send no char in bl_packet
+        ser.write(int_to_bytes(data_block + 9))
+        
+        # send bl_packet
         ser.write(bl_packet)
 
         reply = stm32_read_ack()
-        print(reply)
+        #print(reply)
         if(reply == CMD_ACK):
             print('flash write success at ' + hex(stm32_app_address))
         elif (reply == CMD_NACK):
@@ -332,6 +296,10 @@ def stm32_write():
     if(f_file_exist):
         bin_file_data.close()
         print("closing file")
+    
+    elapsed_time = time.time() - start
+    print("elapsed time = {}s".format(int(elapsed_time)))
+    print("write speed = {} bytes per second".format(int(f_file_size/elapsed_time)))
 
 
 ser_open = False
@@ -339,48 +307,39 @@ port = SERIAL_PORT
 baud = BAUDRATE
 
 if len(sys.argv) >= 2:
+    
     cmd = sys.argv[1]
-
+    
     try:
-        ser = serial.Serial("/dev/tty"+port, baud, timeout=10)
+        ser = serial.Serial("/dev/tty"+port, baud, timeout=1)
         ser_open = True
     except:
         print("\n Not valid port")
 else:
-    print("please enter port, baud rate and cmd and optional input file")
+    print("please enter cmd and optional input file")
 
 if ser_open:
     print("Port open success")
 
-    ack = stm32_read_ack()
-
-    if (ack == CMD_ACK):
-        print("connected to target")
-        stm32_send_ack()
-
-        if(cmd == 'write'):
-            if len(sys.argv) >= 3:
-                bin_file = sys.argv[2]
-                stm32_write()
-                stm32_jump()
-            else:
-                print('please enter input file')
-        elif(cmd == 'erase'):
-            stm32_erase()
-        elif(cmd == 'reset'):
-            stm32_reset()
-        elif(cmd == 'jump'):
+    if(cmd == 'write'):
+        if len(sys.argv) >= 3:
+            bin_file = sys.argv[2]
+            stm32_write()
             stm32_jump()
-        elif(cmd == 'help'):
-            stm32_get_help()
-        elif(cmd == 'read'):
-            stm32_read_flash()
-        elif(cmd == 'fread'):
-            stm32_fast_read_flash()
         else:
-            print("invalid cmd")
+            print('please enter input file')
+    elif(cmd == 'erase'):
+        stm32_erase()
+    elif(cmd == 'reset'):
+        stm32_reset()
+    elif(cmd == 'jump'):
+        stm32_jump()
+    elif(cmd == 'help'):
+        stm32_get_help()
+    elif(cmd == 'read'):
+        stm32_read_flash()
     else:
-        print("timeout error!! could not connect to target")
+        print("invalid cmd")
 
 
 else:

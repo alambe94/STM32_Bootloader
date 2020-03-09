@@ -21,7 +21,6 @@
 "Src/main.o"
 "Src/stm32f4xx_hal_msp.o"
 "Src/stm32f4xx_it.o"
-"Src/sys.o"
 "Src/syscalls.o"
 "Src/sysmem.o"
 "Src/system_stm32f4xx.o"

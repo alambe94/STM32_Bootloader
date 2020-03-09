@@ -47,7 +47,7 @@
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-extern void BL_UART_RX_ISR();
+
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -207,7 +207,7 @@ void USART2_IRQHandler(void)
   /* USER CODE END USART2_IRQn 0 */
   HAL_UART_IRQHandler(&huart2);
   /* USER CODE BEGIN USART2_IRQn 1 */
-  BL_UART_RX_ISR();
+
   /* USER CODE END USART2_IRQn 1 */
 }
 

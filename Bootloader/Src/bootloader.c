@@ -7,11 +7,33 @@
 
 
 #include "bootloader.h"
-#include "stm32f4xx_hal.h"
 #include "string.h"
 #include "stdlib.h"
+#include "main.h"
+
+#ifdef STM32F103xE
+#include "stm32f1xx_hal.h"
+/**
+ *  STM32F103RE -- 512KB total flash.
+ *  Bootloader resides in pages 0,1--15  2KB*16 Flash.
+ *  Total pages in 103RE are 256.
+ *  pages to erase 16 to 255, except pages 0 to 15 (bootloader).
+ *  Erase type- pages.
+ *  Programaing voltage- 2.7v to 3.3v.
+ *  Flash writing width - double word.
+ */
+#define PAGE_SIZE 2048    // 2KB
+#define BL_TOTAL_PAGES 255// 255*2KB
+#define BL_USED_PAGES  16 // 16*2KB
+
+#define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_PAGES*PAGE_SIZE)
+#define USER_FLASH_END_ADDRESS   (0x08000000 + 512*1024)
+
+#endif
 
 
+#ifdef STM32F401xE
+#include "stm32f4xx_hal.h"
 /**
  *  STM32F401RE -- 512KB total flash.
  *  Bootloader resides in sector 0,1 -- 16KB + 16KB Flash.
@@ -21,19 +43,22 @@
  *  Programaing voltage- 2.7v to 3.3v.
  *  Flash writing width - byte by byte for 2.7v to 3.3v.
  */
-
+#define BL_SECTOR_SIZE   (16*1024) //16KB
 #define BL_TOTAL_SECTORS 8 // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB
 #define BL_USED_SECTORS  2 // 16KB + 16KB
 
-#define USER_FLASH_START_ADDRESS (0x08008000)
-#define USER_FLASH_END_ADDRESS   (0x08008000 + 480000) // 32KB used by bootloader remaing 480K
+#define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS*BL_SECTOR_SIZE)
+#define USER_FLASH_END_ADDRESS   (0x08000000 + 512*1024) // 32KB used by bootloader remaing 480K
 
-#define CMD_WRITE     0x50
-#define CMD_READ      0x51
-#define CMD_ERASE     0x52
-#define CMD_RESET     0x53
-#define CMD_JUMP      0x54
-#define CMD_VERIFY    0x55
+#endif
+
+
+#define CMD_WRITE  0x50
+#define CMD_READ   0x51
+#define CMD_ERASE  0x52
+#define CMD_RESET  0x53
+#define CMD_JUMP   0x54
+#define CMD_VERIFY 0x55
 
 #define CMD_ACK    0x90
 #define CMD_NACK   0x91
@@ -43,18 +68,20 @@
 
 #define SYNC_CHAR  '$'
 
-#define  RX_BUFFER_SIZE   (256)
-#define  TX_BUFFER_SIZE   (256)
+#define  DATA_LEN  (128)
+#define  FRAME_LEN (DATA_LEN + 12)
+
+#define  RX_BUFFER_SIZE   (FRAME_LEN)
+
+#define  TX_BUFFER_SIZE   (255)
 uint8_t  RX_Buffer[RX_BUFFER_SIZE];
 uint8_t  TX_Buffer[TX_BUFFER_SIZE];
 
 
 extern UART_HandleTypeDef huart2;
+extern CRC_HandleTypeDef hcrc;
 
 UART_HandleTypeDef* BL_UART = &huart2;
-
-
-static uint32_t Bootloader_Timeout = 3000;  // 3 seconds
 
 
 /*Maxim APPLICATION NOTE 27 */
@@ -91,63 +118,44 @@ uint8_t CRC8(uint8_t* data, uint8_t len)
     return crc;
     }
 
-
-
 void BL_UART_Send_Char(char data)
     {
     BL_UART->Instance->DR = data;
     while (__HAL_UART_GET_FLAG(BL_UART,UART_FLAG_TC) == 0);
     }
 
-void BL_UART_Send_String(char* data)
+void BL_UART_Send_String(char *data)
     {
 
-    uint16_t len = strlen(data);
-
-    while (len--)
+    while (*data)
 	{
 	BL_UART_Send_Char(*data);
 	data++;
 	}
-
     }
+
 
 void Write_Callback(uint32_t address, const uint8_t *data, uint32_t len)
     {
 
     uint8_t status = 1;
-
-    uint32_t Aligned_Word[1];
-
-    uint8_t *byte_ptr = (uint8_t*) Aligned_Word;
+    uint32_t *aligned_data = (uint32_t*)data;
+    len /= 4;
 
     if (address >= USER_FLASH_START_ADDRESS
 	    && address <= USER_FLASH_END_ADDRESS - len)
 	{
 
-	if (len % 4 != 0)
-	    {
-	    len += (len % 4);
-	    }
-
 	/* Unlock the Flash to enable the flash control register access *************/
 	HAL_FLASH_Unlock();
 
-	for (uint32_t i = 0; i < len/4 ; i++)
+	for (uint32_t i = 0; i < len ; i++)
 	    {
 
-	    // forced aligned start
-	    byte_ptr[0] = data[0];
-	    byte_ptr[1] = data[1];
-	    byte_ptr[2] = data[2];
-	    byte_ptr[3] = data[3];
-	    // forced aligned end
-
-	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address,
-		    Aligned_Word[0]) == HAL_OK)
+	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, *aligned_data) == HAL_OK)
 		{
 		/* Check the written value */
-		if (*(uint32_t*) address != Aligned_Word[0])
+		if (*(uint32_t*) address != *aligned_data)
 		    {
 		    /* Flash content doesn't match SRAM content */
 		    status = 0;
@@ -155,7 +163,7 @@ void Write_Callback(uint32_t address, const uint8_t *data, uint32_t len)
 		    }
 		/* Increment FLASH destination address */
 		address += 4;
-		data += 4;
+		aligned_data ++;
 		}
 	    else
 		{
@@ -198,13 +206,16 @@ void Read_Callback(uint32_t address, uint32_t len)
 	BL_UART_Send_Char(CMD_ACK);
 
 
-	for (uint32_t i = 0; i < len; i++)
+	for (uint8_t i = 0; i < len; i++)
 	    {
 	    TX_Buffer[i] = *add_ptr++;
 	    BL_UART_Send_Char(TX_Buffer[i]);
 	    }
 
 	crc = CRC8(TX_Buffer, len);
+
+	/* if using hardware crc */
+	//crc_calc = HAL_CRC_Calculate(&hcrc, (uint32_t*)TX_Buffer, len);
 
 	BL_UART_Send_Char(crc);
 
@@ -232,7 +243,6 @@ void Erase_Callback()
 void Reset_Callback()
     {
     // reset mcu
-    BL_UART_Send_Char(CMD_ACK);
     HAL_NVIC_SystemReset();
     }
 
@@ -283,11 +293,20 @@ uint8_t BL_Erase_Flash()
 
     FLASH_EraseInitTypeDef flash_erase_handle;
 
+#ifdef STM32F103xE
+    flash_erase_handle.TypeErase = FLASH_TYPEERASE_PAGES;
+    flash_erase_handle.Banks = FLASH_BANK_1;
+    flash_erase_handle.NbPages = (BL_TOTAL_PAGES - BL_USED_PAGES);
+    flash_erase_handle.PageAddress = USER_FLASH_START_ADDRESS;
+#endif
+
+#ifdef STM32F401xE
     flash_erase_handle.TypeErase = FLASH_TYPEERASE_SECTORS;
     flash_erase_handle.Banks = FLASH_BANK_1;
     flash_erase_handle.Sector = BL_USED_SECTORS;
-    flash_erase_handle.NbSectors = 6;
+    flash_erase_handle.NbSectors = BL_TOTAL_SECTORS - BL_USED_SECTORS;
     flash_erase_handle.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+#endif
 
     HAL_FLASH_Unlock();
 
@@ -301,7 +320,6 @@ uint8_t BL_Erase_Flash()
     return status;
     }
 
-
 void Bootloader()
     {
 
@@ -313,6 +331,8 @@ void Bootloader()
 
 	memset(RX_Buffer, 0x00, RX_BUFFER_SIZE);
 
+
+
 	/* wait for sync char*/
 	if (HAL_UART_Receive(BL_UART, RX_Buffer, 1, HAL_MAX_DELAY)
 		== HAL_OK)
@@ -323,23 +343,37 @@ void Bootloader()
 	    if (sync_char == SYNC_CHAR)
 		{
 
-		/* wait for packet len char*/
+		/* wait for packet_len char*/
 		if (HAL_UART_Receive(BL_UART, RX_Buffer, 1, 100) == HAL_OK)
 		    {
 
 		    uint8_t packet_len = RX_Buffer[0];
 
-		    if (HAL_UART_Receive(BL_UART, RX_Buffer, packet_len,
-			    (packet_len + 100)) == HAL_OK)
+		    if (HAL_UART_Receive(BL_UART, RX_Buffer, packet_len, 1000) == HAL_OK)
 			{
 
+			//frame structure 1-byte cmd + 1-byte data size + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
+
 			uint8_t cmd = RX_Buffer[0];
+			len = RX_Buffer[1]; // number of bytes to write or read if any
+
+			/* dont care*/
+			(void)RX_Buffer[2];
+			(void)RX_Buffer[3];
 
 			/* last byte is crc*/
 			uint8_t crc_recvd = RX_Buffer[packet_len - 1];
 
 			/* calculate crc */
 			uint8_t crc_calc = CRC8(RX_Buffer, (packet_len - 1));
+			//uint8_t crc_calc = crc_recvd;
+
+			//crc_calc = HAL_CRC_Calculate(&hcrc, (uint32_t*)RX_Buffer, (packet_len - 1));
+
+			address = RX_Buffer[4] << 24|
+			          RX_Buffer[5] << 16|
+			          RX_Buffer[6] << 8 |
+			          RX_Buffer[7] << 0;
 
 			if (crc_calc == crc_recvd)
 			    {
@@ -348,26 +382,10 @@ void Bootloader()
 				{
 
 			    case CMD_WRITE:
-
-				address = RX_Buffer[1] << 24|
-				                RX_Buffer[2] << 16|
-				                RX_Buffer[3] << 8 |
-				                RX_Buffer[4] << 0;
-
-				len = RX_Buffer[5]; // number of bytes to write
-
-				Write_Callback(address, (RX_Buffer + 6), len);
+				Write_Callback(address, (RX_Buffer + 8), len);
 				break;
 
 			    case CMD_READ:
-
-				address = RX_Buffer[1] << 24 |
-				               RX_Buffer[2] << 16 |
-					       RX_Buffer[3] << 8  |
-					       RX_Buffer[4] << 0;
-
-				len = RX_Buffer[5];
-
 				Read_Callback(address, len);
 				break;
 
@@ -384,15 +402,7 @@ void Bootloader()
 				break;
 
 			    case CMD_VERIFY:
-
-				address = RX_Buffer[1] << 24 |
-				                 RX_Buffer[2] << 16 |
-						 RX_Buffer[3] << 8  |
-						 RX_Buffer[4] << 0;
-
-				len = RX_Buffer[5];
-
-				Verify_Callback(address, (RX_Buffer + 6), len);
+				Verify_Callback(address, (RX_Buffer + 8), len);
 				break;
 
 			    case CMD_HELP:
@@ -412,31 +422,19 @@ void Bootloader()
     }
 
 
+
 void BL_Main_Loop()
     {
 
     HAL_Delay(1);
 
-    BL_UART_Send_Char(CMD_ACK);
-
-    /* wait for ack to enter bootloader char*/
-    if (HAL_UART_Receive(BL_UART, RX_Buffer, 1, Bootloader_Timeout) == HAL_OK)
+    /* if pin is reset enter bootloader*/
+    //if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
 	{
-
-	if(RX_Buffer[0] == CMD_ACK)
-	    {
-		Bootloader();
-		Reset_Callback();
-	    }
+	Bootloader();
 	}
-    else
-	{
-	// jump to user application
-	Jump_Callback();
-	}
-    }
 
-void BL_UART_RX_ISR()
-    {
+    /* else jump to application */
+    Jump_Callback();
 
     }
