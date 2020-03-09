@@ -141,7 +141,7 @@ def stm32_jump():
 def stm32_read_flash():
     
     start = millis()
-    
+    len = 0
     bytes_to_read = 248
     read_len = FLASH_SIZE
     stm32_app_address = USER_APP_ADDRESS
@@ -220,7 +220,7 @@ def stm32_read_flash():
                 
     elapsed_time = millis() - start
     print("elapsed time = {}ms".format(int(elapsed_time)))
-    print("read speed = {}kB/S".format(int((len*1000)/(8*elapsed_time))))            
+    print("read speed = {}kB/S".format(int(len/elapsed_time)))        
 
 def stm32_write():
     
@@ -308,7 +308,7 @@ def stm32_write():
     
     elapsed_time = millis() - start
     print("elapsed time = {}ms".format(int(elapsed_time)))
-    print("write speed = {}kB/S".format(int((f_file_size*1000)/(8*elapsed_time)))) 
+    print("read speed = {}kB/S".format(int(f_file_size/elapsed_time)))
 
 
 ser_open = False
