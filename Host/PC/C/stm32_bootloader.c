@@ -6,6 +6,7 @@
 #include "serial_port.h"
 
 #define USER_APP_ADDRESS 0x08008000
+#define FLASH_SIZE  480000
 
 #define CMD_WRITE  0x50
 #define CMD_READ   0x51
@@ -24,14 +25,14 @@
 
 
 char *com_port = NULL;
-int baud_rate = 0;
+uint32_t baud_rate = 0;
 char *cmd = NULL;
 
 SERIAL_HANDLE Serial_Handle;
 
-int Open_Serial_port(char *port, int baud)
+uint8_t Open_Serial_port(char *port, uint32_t baud)
 {
-   int status = 1;
+   uint8_t status = 1;
    Serial_Handle = Serial_Port_Config(port, baud);
 #ifdef _WIN32
    if (Serial_Handle == INVALID_HANDLE_VALUE)
@@ -84,6 +85,33 @@ uint8_t CRC8(uint8_t *data, uint8_t len)
    return crc;
 }
 
+void stm32_send_cmd(uint8_t cmd)
+{
+   uint8_t temp[1];
+
+   temp[0] = cmd;
+   uint8_t crc = CRC8(temp, 1);
+
+   temp[0] = SYNC_CHAR;
+   Serial_Port_Write(Serial_Handle, temp, 1);
+
+   temp[0] = 2;
+   Serial_Port_Write(Serial_Handle, temp, 1);
+
+   temp[0] = cmd;
+   Serial_Port_Write(Serial_Handle, temp, 1);
+
+   temp[0] = crc;
+   Serial_Port_Write(Serial_Handle, temp, 1);
+}
+
+void stm32_send_ack()
+{
+   uint8_t temp[1];
+   temp[0] = CMD_ACK;
+   Serial_Port_Write(Serial_Handle, temp, 1);
+}
+
 uint8_t stm32_read_ack()
 {
    uint8_t rx_char;
@@ -91,11 +119,196 @@ uint8_t stm32_read_ack()
    return rx_char;
 }
 
+void stm32_erase()
+{
+
+   Serial_Port_Timeout(Serial_Handle, 10000);
+
+   stm32_send_cmd(CMD_ERASE);
+
+   uint8_t reply = stm32_read_ack();
+   if (reply == CMD_ACK)
+   {
+      printf("flash erase success\n");
+   }
+   else
+   {
+      printf("flash erase error\n");
+   }
+
+   Serial_Port_Timeout(Serial_Handle, 100);
+}
+
+void stm32_get_help()
+{
+   printf("supported commands\n"
+          "write  -> write application to mcu.\n"
+          "erase  -> erase mcu flash.\n"
+          "reset  -> reset mcu.\n"
+          "jump   -> jump to user application.\n"
+          "read   -> read flash from mcu.\n"
+          "verify -> verify mcu content.\n");
+}
+
+void stm32_reset()
+{
+
+   stm32_send_cmd(CMD_RESET);
+
+   uint8_t reply = stm32_read_ack();
+
+   if (reply == CMD_ACK)
+   {
+      printf("mcu reset\n");
+   }
+   else
+   {
+      printf("mcu reset failed\n");
+   }
+}
+
+void stm32_jump()
+{
+   stm32_send_cmd(CMD_JUMP);
+
+   uint8_t reply = stm32_read_ack();
+
+   if (reply == CMD_ACK)
+   {
+      printf("entering user application\n");
+   }
+   else
+   {
+      printf("user application failed\n");
+   }
+}
+
+void stm32_read_flash(char *output_file)
+{
+
+   FILE *fp = NULL;
+
+   uint32_t start_time = 0;
+   uint32_t read_len = FLASH_SIZE;
+   uint32_t stm32_app_address = USER_APP_ADDRESS;
+
+   uint8_t bl_packet[10];
+   uint8_t rx_buffer[256];
+   uint8_t bl_packet_index;
+   uint8_t bytes_to_read = 248;
+   uint8_t temp[1] = {0};
+
+   fp = fopen(output_file, "Wb");
+
+   if (fp == NULL)
+   {
+      printf("can not create bin file %s\n", output_file);
+      return;
+   }
+
+   while (read_len > 0)
+   {
+
+      if (read_len < bytes_to_read)
+      {
+         bytes_to_read = read_len;
+      }
+      memset(bl_packet, 0x00, 10);
+      memset(rx_buffer, 0x00, 256);
+
+      bl_packet_index = 0;
+
+      // payload structure 1-byte cmd + payload_length + 0x00 + 0x00 + 4-byte addes  + payload + 1-byte CRC
+
+      // assemble cmd
+      bl_packet[bl_packet_index++] = CMD_READ;
+
+      // no char to receive from stm32
+      bl_packet[bl_packet_index++] = bytes_to_read;
+
+      // 2 bytes padding for stm32 word alignment
+      bl_packet[bl_packet_index++] = 0x00;
+      bl_packet[bl_packet_index++] = 0x00;
+
+      // assemble address
+      bl_packet[bl_packet_index++] = (stm32_app_address >> 24 & 0xFF);
+      bl_packet[bl_packet_index++] = (stm32_app_address >> 16 & 0xFF);
+      bl_packet[bl_packet_index++] = (stm32_app_address >> 8 & 0xFF);
+      bl_packet[bl_packet_index++] = (stm32_app_address >> 0 & 0xFF);
+
+      // calculate crc
+      uint8_t crc = CRC8(bl_packet, 8);
+
+      // assemble crc
+      bl_packet[bl_packet_index++] = crc;
+
+      // send sync char
+      temp[0] = SYNC_CHAR;
+      Serial_Port_Write(Serial_Handle, temp, 1);
+
+      // send no chars in bl_packet
+      // 0 bytes payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
+      temp[0] = 9;
+      Serial_Port_Write(Serial_Handle, temp, 1);
+
+      // send bl_packet
+      Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
+
+      uint8_t reply = stm32_read_ack();
+      
+      if (reply == CMD_ACK)
+      {
+         uint8_t crc_recvd;
+
+         Serial_Port_Read(Serial_Handle, rx_buffer, bytes_to_read);
+
+         Serial_Port_Read(Serial_Handle, &crc_recvd, 1);
+
+         uint8_t crc_calc = CRC8(rx_buffer, bytes_to_read);
+
+         if (crc_recvd == crc_calc)
+         {
+            fwrite(bl_packet, 1, bytes_to_read, fp);
+            printf("flash read succsess at %0X20\n", stm32_app_address);
+            read_len -= bytes_to_read;
+            stm32_app_address += bytes_to_read;
+            printf("remaining bytes: %i\n", read_len);
+         }
+         else
+         {
+            printf("crc mismatch\n");
+            break;
+         }
+      }
+      else
+      {
+         printf("flash read error at %0x20\n", stm32_app_address);
+      }
+
+      if (read_len == 0)
+      {
+         printf("flash read successfull, jolly good!!!!\n");
+      }
+
+      fclose(fp);
+   }
+
+   uint32_t elapsed_time = 50000 - start_time;
+   printf("elapsed time = %i ms\n", elapsed_time);
+   printf("read speed = %skB/S\n", 1000 / elapsed_time);
+}
+
 void stm32_write(char *input_file)
 {
    FILE *fp = NULL;
 
-   int start_time = 1;
+   uint32_t start_time = 1;
+   uint32_t stm32_app_address = USER_APP_ADDRESS;
+
+   uint8_t payload_length = 240;
+   uint8_t bl_packet[256];
+   uint8_t bl_packet_index = 0;
+   uint8_t temp[1] = {0};
 
    printf("opening file...\n");
 
@@ -103,19 +316,14 @@ void stm32_write(char *input_file)
 
    if (fp == NULL)
    {
-      printf("can not open %s", input_file);
+      printf("can not open %s\n", input_file);
    }
    else
    {
       fseek(fp, 0L, SEEK_END);
-      int f_file_len = ftell(fp);
+      uint32_t f_file_len = ftell(fp);
       rewind(fp);
       printf("file size %i\n", f_file_len);
-
-      DWORD stm32_app_address = USER_APP_ADDRESS;
-      int payload_length = 240;
-      uint8_t bl_packet[256];
-      uint8_t bl_packet_index = 0;
 
       while (f_file_len > 0)
       {
@@ -128,7 +336,6 @@ void stm32_write(char *input_file)
 
          memset(bl_packet, 0x00, 256);
          bl_packet_index = 0;
-         char temp[1] = {0};
 
          // assemble cmd
          bl_packet[bl_packet_index++] = CMD_WRITE;
@@ -171,10 +378,6 @@ void stm32_write(char *input_file)
 
          uint8_t reply = stm32_read_ack();
 
-         printf("reply ");
-         printf("%i\n", reply);
-
-
          if (reply == CMD_ACK)
          {
             printf("flash write success at %0X2\n", stm32_app_address);
@@ -187,7 +390,7 @@ void stm32_write(char *input_file)
 
          f_file_len -= payload_length;
          stm32_app_address += payload_length;
-         printf("remaining bytes: %i", f_file_len);
+         printf("remaining bytes: %i\n", f_file_len);
 
          if (f_file_len == 0)
          {
@@ -197,7 +400,7 @@ void stm32_write(char *input_file)
          fclose(fp);
          printf("closing file\n");
 
-         int elapsed_time = 5000 - start_time;
+         uint32_t elapsed_time = 5000 - start_time;
          printf("elapsed time = %ims\n", elapsed_time);
          printf("write speed = %ikB/S\n", f_file_len / elapsed_time);
       }
@@ -206,9 +409,11 @@ void stm32_write(char *input_file)
 
 int main(int argc, char *argv[])
 {
+   printf("path = %s\n", argv[0]);
+
    if (argc == 1)
    {
-      printf("please enter port, baud, cmd and optional input file");
+      printf("please enter port, baud, cmd and optional input file\n");
    }
 
    if (argc >= 4)
@@ -228,40 +433,53 @@ int main(int argc, char *argv[])
 
       if (strncmp(cmd, "write", strlen("write")) == 0)
       {
-         char *bin_file = NULL;
-
          if (argc >= 5)
          {
-            bin_file = argv[4];
+            char *bin_file = argv[4];
             printf("input file = %s\n", bin_file);
             stm32_write(bin_file);
          }
          else
          {
-            printf("please enter input file");
+            printf("please enter input file\n");
          }
       }
-      else if (strncmp(cmd, "erase", strlen("erase") == 0))
+      else if (strncmp(cmd, "erase", strlen("erase")) == 0)
       {
-         /* code */
+         stm32_erase();
       }
-      else if (strncmp(cmd, "jump", strlen("jump") == 0))
+      else if (strncmp(cmd, "reset", strlen("reset")) == 0)
       {
-         /* code */
+         stm32_reset();
       }
-      else if (strncmp(cmd, "help", strlen("help") == 0))
+      else if (strncmp(cmd, "jump", strlen("jump")) == 0)
       {
-         /* code */
+         stm32_jump();
       }
-      else if (strncmp(cmd, "read", strlen("read") == 0))
+      else if (strncmp(cmd, "help", strlen("help")) == 0)
       {
-         /* code */
+         stm32_get_help();
+      }
+      else if (strncmp(cmd, "read", strlen("read")) == 0)
+      {
+         if (argc >= 5)
+         {
+            char *bin_file = argv[4];
+            printf("input file = %s\n", bin_file);
+            stm32_read_flash(bin_file);
+         }
+         else
+         {
+            printf("please enter ouput file\n");
+         }
+      
       }
       else
       {
-         printf("invalid cmd\n");
+         printf("Invalid cmd\n");
       }
 
+      printf("Closing port\n");
       Serial_Port_Close(Serial_Handle);
    }
    else

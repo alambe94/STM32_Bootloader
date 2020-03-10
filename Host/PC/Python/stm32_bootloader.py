@@ -107,15 +107,6 @@ def stm32_erase():
     Serial_Port.timeout = 1    
 
 
-def stm32_enter_application():
-    stm32_bl_send_cmd(CMD_JUMP)
-    reply = stm32_read_ack()
-    if(reply == CMD_ACK):
-        print('entering user application')
-    elif (reply == CMD_NACK):
-        print('user application failed')
-
-
 def stm32_get_help():
     print("""
        supported commands
@@ -191,7 +182,7 @@ def stm32_read_flash():
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
         
         # send no chars in bl_packet
-        # 0bytes payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
+        # 0 bytes payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
         Serial_Port.write(int_to_bytes(9))  # total bytes in bl_packet
         
         # send bl_packet

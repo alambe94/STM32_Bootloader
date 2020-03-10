@@ -2,7 +2,7 @@
 
 #ifdef _WIN32
 
-SERIAL_HANDLE Serial_Port_Config(uint8_t *port, int baud)
+SERIAL_HANDLE Serial_Port_Config(uint8_t *port, uint32_t baud)
 {
 
 SERIAL_HANDLE hComm;                             // Handle to the Serial port
@@ -24,17 +24,17 @@ dcbSerialParams.Parity = NOPARITY;               // Setting Parity = None
 SetCommState(hComm, &dcbSerialParams);  //Configuring the port according to settings in DCB
 
 
-timeouts.ReadIntervalTimeout = 1000;
-timeouts.ReadTotalTimeoutConstant = 1000;
-timeouts.ReadTotalTimeoutMultiplier = 1000;
-timeouts.WriteTotalTimeoutConstant = 1000;
-timeouts.WriteTotalTimeoutMultiplier = 1000;
+timeouts.ReadIntervalTimeout = 100;
+timeouts.ReadTotalTimeoutConstant = 100;
+timeouts.ReadTotalTimeoutMultiplier = 100;
+timeouts.WriteTotalTimeoutConstant = 100;
+timeouts.WriteTotalTimeoutMultiplier = 100;
 SetCommTimeouts(hComm, &timeouts);
 
 return hComm;
 }
 
-int Serial_Port_Write(SERIAL_HANDLE hComm, uint8_t *str, int len)
+uint32_t Serial_Port_Write(SERIAL_HANDLE hComm, uint8_t *str, uint32_t len)
 {
 
     DWORD bytes_count = 0; // No of bytes written to the port
@@ -48,7 +48,7 @@ int Serial_Port_Write(SERIAL_HANDLE hComm, uint8_t *str, int len)
     return bytes_count;
 }
 
-int Serial_Port_Read(SERIAL_HANDLE hComm, uint8_t *buf, int len)
+uint32_t Serial_Port_Read(SERIAL_HANDLE hComm, uint8_t *buf, uint32_t len)
 {
 
 DWORD bytes_count = 0;                    // No of bytes read from the port   
@@ -63,11 +63,22 @@ void Serial_Port_Close(SERIAL_HANDLE hComm)
     CloseHandle(hComm); //Closing the Serial Port
 }
 
+void Serial_Port_Timeout(SERIAL_HANDLE hComm, uint32_t len)
+{
+
+COMMTIMEOUTS timeouts = {0};
+GetCommTimeouts(hComm, &timeouts);
+
+timeouts.ReadTotalTimeoutConstant = len;
+
+SetCommTimeouts(hComm, &timeouts);
+
+}
 #endif
 
 
 #ifdef __linux__
-SERIAL_HANDLE Serial_Port_Config(uint8_t *port, int baud)
+SERIAL_HANDLE Serial_Port_Config(uint8_t *port, uint32_t baud)
 {
 
     SERIAL_HANDLE fd;                              /* File Descriptor */
@@ -104,20 +115,20 @@ SERIAL_HANDLE Serial_Port_Config(uint8_t *port, int baud)
     return fd;
 }
 
-int Serial_Port_Write(SERIAL_HANDLE fd, uint8_t *str, int len)
+uint32_t Serial_Port_Write(SERIAL_HANDLE fd, uint8_t *str, uint32_t len)
 {
 
-int bytes_count = 0;                   // No of bytes written to the port
+uint32_t bytes_count = 0;                   // No of bytes written to the port
 
 bytes_count = write(fd, str, len);
 
 return bytes_count;
 }
 
-int Serial_Port_Read(SERIAL_HANDLE fd, uint8_t *buf, int len)
+uint32_t Serial_Port_Read(SERIAL_HANDLE fd, uint8_t *buf, uint32_t len)
 {
 
-int bytes_count = 0;                    // No of bytes read from the port   
+uint32_t bytes_count = 0;                    // No of bytes read from the port   
 
 bytes_count = read(fd, &buf, len);
 
@@ -127,5 +138,17 @@ return bytes_count;
 void Serial_Port_Close(SERIAL_HANDLE fd)
 {
     close(fd); //Closing the Serial Port
+}
+
+void Serial_Port_timeout(SERIAL_HANDLE fd, uint32_t len)
+{
+
+COMMTIMEOUTS timeouts = {0};
+GetCommTimeouts(hComm, &timeouts);
+
+timeouts.ReadTotalTimeoutConstant = len;
+
+SetCommTimeouts(hComm, &timeouts);
+
 }
 #endif
