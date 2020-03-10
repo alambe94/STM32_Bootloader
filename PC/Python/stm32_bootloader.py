@@ -23,7 +23,6 @@ CMD_HELP = 0x40
 
 SYNC_CHAR = ord('$')
 
-
 # Maxim APPLICATION NOTE 27
 
 CRC8_Table = [
@@ -63,24 +62,24 @@ def int_to_bytes(data):
 def stm32_bl_send_cmd(cmd):
 
     crc = CRC8([cmd], 1)
-    ser.write(int_to_bytes(SYNC_CHAR))
-    ser.write(int_to_bytes(2))
+    Serial_Port.write(int_to_bytes(SYNC_CHAR))
+    Serial_Port.write(int_to_bytes(2))
 
-    ser.write(int_to_bytes(cmd))
-    ser.write(int_to_bytes(crc))
+    Serial_Port.write(int_to_bytes(cmd))
+    Serial_Port.write(int_to_bytes(crc))
 
 
 def stm32_send_ack():
-    ser.write(int_to_bytes(CMD_ACK))
+    Serial_Port.write(int_to_bytes(CMD_ACK))
 
 
 def stm32_read_line():
-    rx_string = ser.readline().decode('utf-8')
+    rx_string = Serial_Port.readline().decode('utf-8')
     return rx_string
 
 
 def stm32_read_ack():
-    rx_char = ser.read(1)
+    rx_char = Serial_Port.read(1)
     if(rx_char == b''):
         return CMD_NACK
     else:
@@ -88,6 +87,9 @@ def stm32_read_ack():
 
 
 def stm32_erase():
+
+    Serial_Port.timeout = 10
+
     stm32_bl_send_cmd(CMD_ERASE)
 
     print("erasing", end='')
@@ -101,6 +103,8 @@ def stm32_erase():
         print('flash erase success')
     elif (reply == CMD_NACK):
         print('flash erase error')
+
+    Serial_Port.timeout = 1    
 
 
 def stm32_enter_application():
@@ -184,20 +188,20 @@ def stm32_read_flash():
         bl_packet += int_to_bytes(crc)
 
         # send sync char
-        ser.write(int_to_bytes(SYNC_CHAR))
+        Serial_Port.write(int_to_bytes(SYNC_CHAR))
         
         # send no chars in bl_packet
         # 0bytes payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
-        ser.write(int_to_bytes(9))  # total bytes in bl_packet
+        Serial_Port.write(int_to_bytes(9))  # total bytes in bl_packet
         
         # send bl_packet
-        ser.write(bl_packet)
+        Serial_Port.write(bl_packet)
 
         reply = stm32_read_ack()
 
         if(reply == CMD_ACK):
-            rcvd_packet = ser.read(bytes_to_read)
-            crc_recvd = ord(ser.read(1))
+            rcvd_packet = Serial_Port.read(bytes_to_read)
+            crc_recvd = ord(Serial_Port.read(1))
             crc_calc = CRC8(rcvd_packet, bytes_to_read)
             if(crc_recvd == crc_calc):
                 rcvd_file += rcvd_packet
@@ -229,7 +233,8 @@ def stm32_read_flash():
     print("elapsed time = {}ms".format(int(elapsed_time)))
     print("read speed = {}kB/S".format(int(len/elapsed_time)))        
 
-def stm32_write():
+
+def stm32_write(bin_file):
     
     start = millis()
     
@@ -288,14 +293,14 @@ def stm32_write():
         print("writing to serial port")
         
         # send sync char
-        ser.write(int_to_bytes(SYNC_CHAR))
+        Serial_Port.write(int_to_bytes(SYNC_CHAR))
         
         # send no char in bl_packet
         # payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
-        ser.write(int_to_bytes(payload_length + 9))
+        Serial_Port.write(int_to_bytes(payload_length + 9))
         
         # send bl_packet
-        ser.write(bl_packet)
+        Serial_Port.write(bl_packet)
 
         reply = stm32_read_ack()
         #print(reply)
@@ -321,45 +326,53 @@ def stm32_write():
     print("read speed = {}kB/S".format(int(f_file_size/1+elapsed_time)))
 
 
-ser_open = False
+def main():
 
-if len(sys.argv) >= 3:
-    
-    port = sys.argv[1]
-    baud = int(sys.argv[2])
-    cmd  = sys.argv[3]
-    
-    try:
-        ser = serial.Serial(port, baud, timeout=10)
-        ser_open = True
-    except:
-        print("Not valid port")
-else:
-    print("please enter port, baud, cmd and optional input file")
+    ser_open = False
+    global Serial_Port
 
-if ser_open:
-    print("Port open success")
-
-    if(cmd == 'write'):
-        if len(sys.argv) >= 4:
-            bin_file = sys.argv[4]
-            stm32_write()
-            #stm32_jump()
-        else:
-            print('please enter input file')
-    elif(cmd == 'erase'):
-        stm32_erase()
-    elif(cmd == 'reset'):
-        stm32_reset()
-    elif(cmd == 'jump'):
-        stm32_jump()
-    elif(cmd == 'help'):
-        stm32_get_help()
-    elif(cmd == 'read'):
-        stm32_read_flash()
+    if len(sys.argv) >= 3:
+        
+        port = sys.argv[1]
+        baud = int(sys.argv[2])
+        cmd  = sys.argv[3]
+        
+        try:
+            Serial_Port = serial.Serial(port, baud, timeout=1)
+            ser_open = True
+        except:
+            print("Not valid port")
     else:
-        print("invalid cmd")
+        print("please enter port, baud, cmd and optional input file")
+
+    if ser_open:
+        print("Port open success")
+
+        if(cmd == 'write'):
+            if len(sys.argv) >= 4:
+                bin_file = sys.argv[4]
+                stm32_write(bin_file)
+                #stm32_jump()
+            else:
+                print('please enter input file')
+        elif(cmd == 'erase'):
+            stm32_erase()
+        elif(cmd == 'reset'):
+            stm32_reset()
+        elif(cmd == 'jump'):
+            stm32_jump()
+        elif(cmd == 'help'):
+            stm32_get_help()
+        elif(cmd == 'read'):
+            stm32_read_flash()
+        else:
+            print("invalid cmd")
 
 
-else:
-    print("Port open failed")
+    else:
+        print("Port open failed")
+
+
+if __name__ == "__main__":
+    main() 
+   
