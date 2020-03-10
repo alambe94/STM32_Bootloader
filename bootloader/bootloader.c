@@ -300,15 +300,12 @@ void BL_Reset_Callback()
     HAL_NVIC_SystemReset();
     }
 
-
-typedef  void (*pFunction)(void);
-
-pFunction Jump_To_App;
-
 void BL_Jump_Callback()
     {
 
     uint32_t app_adress = 0;
+
+    void (*pFunction)(void);
 
     BL_UART_Send_Char(BL_CMD_ACK);
 
@@ -318,12 +315,12 @@ void BL_Jump_Callback()
     app_adress = *(__IO uint32_t*) (USER_FLASH_START_ADDRESS + 4);
 
     /* Jump to user application */
-    Jump_To_App = (pFunction) app_adress;
+    pFunction = (void (*)(void))app_adress;
 
     /* Initialize user application's Stack Pointer */
     __set_MSP(*(__IO uint32_t*) USER_FLASH_START_ADDRESS);
 
-    Jump_To_App();
+    pFunction();
 
     }
 
@@ -366,7 +363,7 @@ void BL_Loop()
 
 		    uint8_t packet_len = BL_RX_Buffer[0];
 
-		    if (HAL_UART_Receive(BL_UART, BL_RX_Buffer, packet_len, 1000) == HAL_OK)
+		    if (HAL_UART_Receive(BL_UART, BL_RX_Buffer, packet_len, 5000) == HAL_OK)
 			{
 
 			//frame structure 1-byte cmd + 1 byte payload len + 0x00 + 0x00 + 4-byte address +  payload + 1-byte CRC
@@ -381,9 +378,9 @@ void BL_Loop()
 			/* last byte is crc*/
 			uint8_t crc_recvd = BL_RX_Buffer[packet_len - 1];
 
-#if(ENABLE_CRC == 1)
+#if(BL_ENABLE_CRC == 1)
 			/* calculate crc */
-			uint8_t crc_calc = CRC8(RX_Buffer, (packet_len - 1));
+			uint8_t crc_calc = BL_CRC8(BL_RX_Buffer, (packet_len - 1));
 #else
 			uint8_t crc_calc = crc_recvd;
 #endif

@@ -1,6 +1,0 @@
-{
-    "files.associations": {
-        "stdlib.h": "c",
-        "serial_port.h": "c"
-    }
-}

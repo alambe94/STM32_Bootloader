@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "serial_port.h"
 
@@ -50,7 +51,7 @@ return status;
 }
 
 /*Maxim APPLICATION NOTE 27 */
-unsigned char CRC8_Table[] =
+uint8_t CRC8_Table[] =
     {
 	0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
 	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
@@ -70,12 +71,12 @@ unsigned char CRC8_Table[] =
 	116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53
     };
 
-unsigned char CRC8(unsigned char *data, unsigned char len)
+uint8_t CRC8(uint8_t *data, uint8_t len)
 {
 
-   unsigned char crc = 0;
+   uint8_t crc = 0;
 
-   for (unsigned char i = 0; i < len; i++)
+   for (uint8_t i = 0; i < len; i++)
    {
       crc = CRC8_Table[crc ^ data[i]];
    }
@@ -83,18 +84,11 @@ unsigned char CRC8(unsigned char *data, unsigned char len)
    return crc;
 }
 
-char stm32_read_ack()
+uint8_t stm32_read_ack()
 {
-   char rx_char;
-
-   if (Serial_Port_Read(Serial_Handle, &rx_char, 1))
-   {
-      return rx_char;
-   }
-   else
-   {
-      return CMD_NACK;
-   }
+   uint8_t rx_char;
+   Serial_Port_Read(Serial_Handle, &rx_char, 1);
+   return rx_char;
 }
 
 void stm32_write(char *input_file)
@@ -120,8 +114,8 @@ void stm32_write(char *input_file)
 
       DWORD stm32_app_address = USER_APP_ADDRESS;
       int payload_length = 240;
-      char bl_packet[256];
-      char bl_packet_index = 0;
+      uint8_t bl_packet[256];
+      uint8_t bl_packet_index = 0;
 
       while (f_file_len > 0)
       {
@@ -133,6 +127,7 @@ void stm32_write(char *input_file)
          // payload structure 1-byte cmd + 1 byte payload lenth + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
 
          memset(bl_packet, 0x00, 256);
+         bl_packet_index = 0;
          char temp[1] = {0};
 
          // assemble cmd
@@ -156,10 +151,10 @@ void stm32_write(char *input_file)
          bl_packet_index += payload_length;
 
          // calculate crc
-         unsigned char crc = CRC8(bl_packet, (payload_length + 8));
+         uint8_t crc = CRC8(bl_packet, (payload_length + 8));
 
          // assemble crc
-         bl_packet[bl_packet_index] = crc;
+         bl_packet[bl_packet_index++] = crc;
 
          printf("writing to serial port\n");
 
@@ -169,14 +164,17 @@ void stm32_write(char *input_file)
 
          // send no char in bl_packet
          // payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
-         temp[0] = payload_length + 9;
+         temp[0] = bl_packet_index;
          Serial_Port_Write(Serial_Handle, temp, 1);
 
-         // send bl_packet
          Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
 
-         char reply = stm32_read_ack();
-         printf("%c", reply);
+         uint8_t reply = stm32_read_ack();
+
+         printf("reply ");
+         printf("%i\n", reply);
+
+
          if (reply == CMD_ACK)
          {
             printf("flash write success at %0X2\n", stm32_app_address);

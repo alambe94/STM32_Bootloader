@@ -2,7 +2,7 @@
 
 #ifdef _WIN32
 
-SERIAL_HANDLE Serial_Port_Config(char *port, int baud)
+SERIAL_HANDLE Serial_Port_Config(uint8_t *port, int baud)
 {
 
 SERIAL_HANDLE hComm;                             // Handle to the Serial port
@@ -17,24 +17,24 @@ hComm = CreateFile(port,                         // Name of the Port to be Opene
                    0,                            // Non Overlapped I/O
                    NULL);                        // Null for Comm Devices
 
-dcbSerialParams.BaudRate = baud;                 // Setting BaudRate = 9600
+dcbSerialParams.BaudRate = baud;                 // Setting BaudRate 
 dcbSerialParams.ByteSize = 8;                    // Setting ByteSize = 8
 dcbSerialParams.StopBits = ONESTOPBIT;           // Setting StopBits = 1
 dcbSerialParams.Parity = NOPARITY;               // Setting Parity = None
 SetCommState(hComm, &dcbSerialParams);  //Configuring the port according to settings in DCB
 
 
-timeouts.ReadIntervalTimeout = 300;
-timeouts.ReadTotalTimeoutConstant = 300;
-timeouts.ReadTotalTimeoutMultiplier = 300;
-timeouts.WriteTotalTimeoutConstant = 50;
-timeouts.WriteTotalTimeoutMultiplier = 10;
+timeouts.ReadIntervalTimeout = 1000;
+timeouts.ReadTotalTimeoutConstant = 1000;
+timeouts.ReadTotalTimeoutMultiplier = 1000;
+timeouts.WriteTotalTimeoutConstant = 1000;
+timeouts.WriteTotalTimeoutMultiplier = 1000;
 SetCommTimeouts(hComm, &timeouts);
 
 return hComm;
 }
 
-int Serial_Port_Write(SERIAL_HANDLE hComm, char *str, int len)
+int Serial_Port_Write(SERIAL_HANDLE hComm, uint8_t *str, int len)
 {
 
     DWORD bytes_count = 0; // No of bytes written to the port
@@ -48,7 +48,7 @@ int Serial_Port_Write(SERIAL_HANDLE hComm, char *str, int len)
     return bytes_count;
 }
 
-int Serial_Port_Read(SERIAL_HANDLE hComm, char *buf, int len)
+int Serial_Port_Read(SERIAL_HANDLE hComm, uint8_t *buf, int len)
 {
 
 DWORD bytes_count = 0;                    // No of bytes read from the port   
@@ -67,7 +67,7 @@ void Serial_Port_Close(SERIAL_HANDLE hComm)
 
 
 #ifdef __linux__
-SERIAL_HANDLE Serial_Port_Config(char *port, int baud)
+SERIAL_HANDLE Serial_Port_Config(uint8_t *port, int baud)
 {
 
     SERIAL_HANDLE fd;                              /* File Descriptor */
@@ -104,7 +104,7 @@ SERIAL_HANDLE Serial_Port_Config(char *port, int baud)
     return fd;
 }
 
-int Serial_Port_Write(SERIAL_HANDLE fd, char *str, int len)
+int Serial_Port_Write(SERIAL_HANDLE fd, uint8_t *str, int len)
 {
 
 int bytes_count = 0;                   // No of bytes written to the port
@@ -114,7 +114,7 @@ bytes_count = write(fd, str, len);
 return bytes_count;
 }
 
-int Serial_Port_Read(SERIAL_HANDLE fd, char *buf, int len)
+int Serial_Port_Read(SERIAL_HANDLE fd, uint8_t *buf, int len)
 {
 
 int bytes_count = 0;                    // No of bytes read from the port   
