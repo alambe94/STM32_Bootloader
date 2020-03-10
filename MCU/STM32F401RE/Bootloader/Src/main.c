@@ -20,7 +20,6 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "crc.h"
 #include "usart.h"
 #include "gpio.h"
 
@@ -90,7 +89,6 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART2_UART_Init();
-  MX_CRC_Init();
   /* USER CODE BEGIN 2 */
   BL_Main();
   /* USER CODE END 2 */
