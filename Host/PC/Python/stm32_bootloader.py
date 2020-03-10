@@ -244,12 +244,13 @@ def stm32_write(bin_file):
     payload_length = 240
     stm32_app_address = USER_APP_ADDRESS
 
+    print("opening file...")
+
     try:
         f_file_len = os.path.getsize(bin_file)
         f_file_size = f_file_len
-        print("opening file...")
-        print("file size " + str(f_file_len))
         bin_file_data = open(bin_file, 'rb')
+        print("file size " + str(f_file_len))
         f_file_exist = True
     except(OSError):
         print("can not open " + bin_file)
@@ -331,7 +332,9 @@ def main():
     ser_open = False
     global Serial_Port
 
-    if len(sys.argv) >= 3:
+    print(sys.argv)
+
+    if len(sys.argv) >= 4:
         
         port = sys.argv[1]
         baud = int(sys.argv[2])
@@ -349,7 +352,7 @@ def main():
         print("Port open success")
 
         if(cmd == 'write'):
-            if len(sys.argv) >= 4:
+            if len(sys.argv) >= 5:
                 bin_file = sys.argv[4]
                 stm32_write(bin_file)
                 #stm32_jump()
@@ -367,7 +370,8 @@ def main():
             stm32_read_flash()
         else:
             print("invalid cmd")
-
+            
+        Serial_Port.close()
 
     else:
         print("Port open failed")
