@@ -323,7 +323,7 @@ def stm32_write(bin_file):
     
     elapsed_time = millis() - start
     print("elapsed time = {}ms".format(int(elapsed_time)))
-    print("read speed = {}kB/S".format(int(f_file_size/1+elapsed_time)))
+    print("write speed = {}kB/S".format(int(f_file_size/elapsed_time)))
 
 
 def main():
