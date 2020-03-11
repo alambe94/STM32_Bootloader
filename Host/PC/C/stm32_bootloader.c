@@ -7,7 +7,7 @@
 #include "serial_port.h"
 
 #define USER_APP_ADDRESS 0x08008000
-#define FLASH_SIZE  480000 //+ 512000 //uncomment for 407VG
+#define FLASH_SIZE 480000 //+ 512000 //uncomment for 407VG
 
 /* 
 CMD_WRITE, CMD_VERIFY Frame 
@@ -27,20 +27,20 @@ CMD_ERASE, CMD_RESET, CMD_JUMP Frame
 [1-byte cmd + 1-byte CRC]
 */
 
-#define CMD_WRITE  0x50
-#define CMD_READ   0x51
-#define CMD_ERASE  0x52
-#define CMD_RESET  0x53
-#define CMD_JUMP   0x54
+#define CMD_WRITE 0x50
+#define CMD_READ 0x51
+#define CMD_ERASE 0x52
+#define CMD_RESET 0x53
+#define CMD_JUMP 0x54
 #define CMD_VERIFY 0x55
 
-#define CMD_ACK    0x90
-#define CMD_NACK   0x91
-#define CMD_ERROR  0x92
+#define CMD_ACK 0x90
+#define CMD_NACK 0x91
+#define CMD_ERROR 0x92
 
-#define CMD_HELP   0x40
+#define CMD_HELP 0x40
 
-#define SYNC_CHAR  '$'
+#define SYNC_CHAR '$'
 
 char *com_port = NULL;
 uint32_t baud_rate = 0;
@@ -66,7 +66,7 @@ uint8_t Open_Serial_port(char *port, uint32_t baud)
    }
 #endif
 
-return status;
+   return status;
 }
 
 uint64_t system_current_time_millis()
@@ -79,29 +79,28 @@ uint64_t system_current_time_millis()
    ftime(&timebuffer);
 #endif
 
-return (uint64_t)(((timebuffer.time * 1000) + timebuffer.millitm));
+   return (uint64_t)(((timebuffer.time * 1000) + timebuffer.millitm));
 }
 
 /*Maxim APPLICATION NOTE 27 */
 uint8_t CRC8_Table[] =
     {
-	0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
-	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
-	35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128, 222, 60, 98,
-	190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158, 29, 67, 161, 255,
-	70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56, 102, 229, 187, 89, 7,
-	219, 133, 103, 57, 186, 228, 6, 88, 25, 71, 165, 251, 120, 38, 196, 154,
-	101, 59, 217, 135, 4, 90, 184, 230, 167, 249, 27, 69, 198, 152, 122, 36,
-	248, 166, 68, 26, 153, 199, 37, 123, 58, 100, 134, 216, 91, 5, 231, 185,
-	140, 210, 48, 110, 237, 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205,
-	17, 79, 173, 243, 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80,
-	175, 241, 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238,
-	50, 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45, 115,
-	202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55, 213, 139,
-	87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119, 244, 170, 72, 22,
-	233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
-	116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53
-    };
+        0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
+        157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
+        35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128, 222, 60, 98,
+        190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158, 29, 67, 161, 255,
+        70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56, 102, 229, 187, 89, 7,
+        219, 133, 103, 57, 186, 228, 6, 88, 25, 71, 165, 251, 120, 38, 196, 154,
+        101, 59, 217, 135, 4, 90, 184, 230, 167, 249, 27, 69, 198, 152, 122, 36,
+        248, 166, 68, 26, 153, 199, 37, 123, 58, 100, 134, 216, 91, 5, 231, 185,
+        140, 210, 48, 110, 237, 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205,
+        17, 79, 173, 243, 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80,
+        175, 241, 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238,
+        50, 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45, 115,
+        202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55, 213, 139,
+        87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119, 244, 170, 72, 22,
+        233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
+        116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53};
 
 uint8_t CRC8(uint8_t *data, uint8_t len)
 {
@@ -224,7 +223,7 @@ void stm32_read_flash()
    uint32_t start_time = system_current_time_millis();
    uint32_t read_len = FLASH_SIZE;
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-   
+
    uint8_t bl_packet[10];
    uint8_t rx_buffer[256];
    uint8_t bl_packet_index;
@@ -285,16 +284,16 @@ void stm32_read_flash()
       Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
 
       uint8_t reply = stm32_read_ack();
-      
+
       if (reply == CMD_ACK)
       {
          uint8_t crc_recvd;
 
          for (size_t i = 0; i < bytes_to_read; i++)
          {
-            Serial_Port_Read(Serial_Handle, rx_buffer+i, 1);
+            Serial_Port_Read(Serial_Handle, rx_buffer + i, 1);
          }
-         
+
          Serial_Port_Read(Serial_Handle, &crc_recvd, 1);
 
          uint8_t crc_calc = CRC8(rx_buffer, bytes_to_read);
@@ -324,16 +323,15 @@ void stm32_read_flash()
    if (read_len == 0)
    {
       printf("flash read successfull, jolly good!!!!\n");
+      rewind(fp);
+      fseek(fp, 0L, SEEK_END);
+      uint32_t f_file_size = ftell(fp);
+      uint32_t elapsed_time = system_current_time_millis() - start_time;
+      printf("elapsed time = %ims\n", elapsed_time);
+      printf("read speed = %ikB/S\n", f_file_size / elapsed_time);
    }
 
-   rewind(fp);
-   fseek(fp, 0L, SEEK_END);
-   uint32_t f_file_size = ftell(fp);
    fclose(fp);
-
-   uint32_t elapsed_time = system_current_time_millis() - start_time;
-   printf("elapsed time = %ims\n", elapsed_time);
-   printf("read speed = %ikB/S\n", f_file_size / elapsed_time);
 }
 
 void stm32_write(char *input_file)
@@ -402,8 +400,6 @@ void stm32_write(char *input_file)
          // assemble crc
          bl_packet[bl_packet_index++] = crc;
 
-         printf("writing to serial port\n");
-
          // send sync char
          temp[0] = SYNC_CHAR;
          Serial_Port_Write(Serial_Handle, temp, 1);
@@ -412,6 +408,7 @@ void stm32_write(char *input_file)
          temp[0] = bl_packet_index;
          Serial_Port_Write(Serial_Handle, temp, 1);
 
+         // send in bl_packet
          Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
 
          uint8_t reply = stm32_read_ack();
@@ -434,14 +431,120 @@ void stm32_write(char *input_file)
       if (f_file_len == 0)
       {
          printf("flash write successfull, jolly good!!!!\n");
+         uint32_t elapsed_time = system_current_time_millis() - start_time;
+         printf("elapsed time = %ims\n", elapsed_time);
+         printf("write speed = %ikB/S\n", f_file_size / elapsed_time);
       }
 
       fclose(fp);
       printf("closing file\n");
+   }
+}
 
-      uint32_t elapsed_time = system_current_time_millis() - start_time;
-      printf("elapsed time = %ims\n", elapsed_time);
-      printf("write speed = %ikB/S\n", f_file_size / elapsed_time);
+void stm32_verify(char *input_file)
+{
+   FILE *fp = NULL;
+
+   uint32_t start_time = system_current_time_millis();
+   uint32_t stm32_app_address = USER_APP_ADDRESS;
+   uint32_t f_file_len;
+   uint32_t f_file_size;
+
+   uint8_t payload_length = 240;
+   uint8_t bl_packet[256];
+   uint8_t bl_packet_index = 0;
+   uint8_t temp[1] = {0};
+
+   printf("opening file...\n");
+
+   fp = fopen(input_file, "rb");
+
+   if (fp == NULL)
+   {
+      printf("can not open %s\n", input_file);
+   }
+   else
+   {
+      fseek(fp, 0L, SEEK_END);
+      f_file_len = ftell(fp);
+      rewind(fp);
+      printf("file size %i\n", f_file_len);
+      f_file_size = f_file_len;
+
+      while (f_file_len > 0)
+      {
+         if (f_file_len < payload_length)
+         {
+            payload_length = f_file_len;
+         }
+
+         memset(bl_packet, 0x00, 256);
+         bl_packet_index = 0;
+
+         // assemble cmd
+         bl_packet[bl_packet_index++] = CMD_VERIFY;
+
+         // no char to flash to stm32
+         bl_packet[bl_packet_index++] = payload_length;
+
+         // 2 bytes padding for stm32 word alignment
+         bl_packet[bl_packet_index++] = 0x00;
+         bl_packet[bl_packet_index++] = 0x00;
+
+         // assemble address
+         bl_packet[bl_packet_index++] = (stm32_app_address >> 24 & 0xFF);
+         bl_packet[bl_packet_index++] = (stm32_app_address >> 16 & 0xFF);
+         bl_packet[bl_packet_index++] = (stm32_app_address >> 8 & 0xFF);
+         bl_packet[bl_packet_index++] = (stm32_app_address >> 0 & 0xFF);
+
+         // assemble payload
+         fread(&bl_packet[bl_packet_index], 1, payload_length, fp);
+         bl_packet_index += payload_length;
+
+         // calculate crc
+         uint8_t crc = CRC8(bl_packet, (payload_length + 8));
+
+         // assemble crc
+         bl_packet[bl_packet_index++] = crc;
+
+         // send sync char
+         temp[0] = SYNC_CHAR;
+         Serial_Port_Write(Serial_Handle, temp, 1);
+
+         // send no char in bl_packet
+         temp[0] = bl_packet_index;
+         Serial_Port_Write(Serial_Handle, temp, 1);
+
+         // send bl_packet
+         Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
+
+         uint8_t reply = stm32_read_ack();
+
+         if (reply == CMD_ACK)
+         {
+            printf("verify success at 0X%0x\n", stm32_app_address);
+         }
+         else
+         {
+            printf("verify error at 0X%0x\n", stm32_app_address);
+            break;
+         }
+
+         f_file_len -= payload_length;
+         stm32_app_address += payload_length;
+         printf("remaining bytes: %i\n", f_file_len);
+      }
+
+      if (f_file_len == 0)
+      {
+         printf("verify successfull, jolly good!!!!\n");
+         uint32_t elapsed_time = system_current_time_millis() - start_time;
+         printf("elapsed time = %ims\n", elapsed_time);
+         printf("verify speed = %ikB/S\n", f_file_size / elapsed_time);
+      }
+
+      fclose(fp);
+      printf("closing file\n");
    }
 }
 
@@ -501,6 +604,19 @@ int main(int argc, char *argv[])
       else if (strncmp(cmd, "read", strlen("read")) == 0)
       {
          stm32_read_flash();
+      }
+      else if (strncmp(cmd, "verify", strlen("verify")) == 0)
+      {
+         if (argc >= 5)
+         {
+            char *bin_file = argv[4];
+            printf("input file = %s\n", bin_file);
+            stm32_verify(bin_file);
+         }
+         else
+         {
+            printf("please enter input file to verfy\n");
+         }
       }
       else
       {

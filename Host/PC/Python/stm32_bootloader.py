@@ -120,9 +120,9 @@ def stm32_erase():
 
     reply = stm32_read_ack()
     if(reply == CMD_ACK):
-        print('flash erase success')
+        print("flash erase success")
     elif (reply == CMD_NACK):
-        print('flash erase error')
+        print("flash erase error")
 
     Serial_Port.timeout = 1    
 
@@ -143,18 +143,18 @@ def stm32_reset():
     stm32_bl_send_cmd(CMD_RESET)
     reply = stm32_read_ack()
     if(reply == CMD_ACK):
-        print('mcu reset')
+        print("mcu reset")
     elif (reply == CMD_NACK):
-        print('mcu reset failed')
+        print("mcu reset failed")
 
 
 def stm32_jump():
     stm32_bl_send_cmd(CMD_JUMP)
     reply = stm32_read_ack()
     if(reply == CMD_ACK):
-        print('jumping to user apllication')
+        print("jumping to user apllication")
     elif (reply == CMD_NACK):
-        print('jump to user apllication failed')
+        print("jump to user apllication failed")
 
 
 def stm32_read_flash():
@@ -208,26 +208,33 @@ def stm32_read_flash():
         reply = stm32_read_ack()
 
         if(reply == CMD_ACK):
+
             rcvd_packet = Serial_Port.read(bytes_to_read)
+
             crc_recvd = ord(Serial_Port.read(1))
+
             crc_calc = CRC8(rcvd_packet, bytes_to_read)
+
             if(crc_recvd == crc_calc):
+
                 rcvd_file += rcvd_packet
-                print('flash read succsess at ' + hex(stm32_app_address))
+                print("flash read succsess at " + hex(stm32_app_address))
                 read_len -= bytes_to_read
                 stm32_app_address += bytes_to_read
                 print("remaining bytes:{}".format(read_len))
+
             else:
                 print("crc mismatch")
 
         elif (reply == CMD_NACK):
-            print('flash read error at ' + hex(stm32_app_address))
+            print("flash read error at " + hex(stm32_app_address))
             break
 
         if(read_len == 0):
+            
             print("flash read successfull, jolly good!!!!")
             try:
-                read_file_data = open("read_file.bin", 'wb')
+                read_file_data = open("read_file.bin", "wb")
                 read_file_data.write(rcvd_file)
                 read_file_data.close()
 
@@ -235,11 +242,13 @@ def stm32_read_flash():
                 print("file size " + str(len))
 
             except(OSError):
-                print("can not open " + bin_file)
+                print("can not open " + "read_file.bin")
                 
-    elapsed_time = millis() - start
-    print("elapsed time = {}ms".format(int(elapsed_time)))
-    print("read speed = {}kB/S".format(int(len/elapsed_time)))        
+            elapsed_time = millis() - start
+            print("elapsed time = {}ms".format(int(elapsed_time)))
+            print("read speed = {}kB/S".format(int(len/elapsed_time)))     
+                
+       
 
 
 def stm32_write(bin_file):
@@ -257,7 +266,7 @@ def stm32_write(bin_file):
     try:
         f_file_len = os.path.getsize(bin_file)
         f_file_size = f_file_len
-        bin_file_data = open(bin_file, 'rb')
+        bin_file_data = open(bin_file, "rb")
         print("file size " + str(f_file_len))
         f_file_exist = True
     except(OSError):
@@ -295,11 +304,7 @@ def stm32_write(bin_file):
 
         # assemble crc
         bl_packet += int_to_bytes(crc)
-        
-        #print(list(bl_packet))
-        
-        print("writing to serial port")
-        
+                        
         # send sync char
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
         
@@ -312,9 +317,9 @@ def stm32_write(bin_file):
         reply = stm32_read_ack()
         #print(reply)
         if(reply == CMD_ACK):
-            print('flash write success at ' + hex(stm32_app_address))
+            print("flash write success at " + hex(stm32_app_address))
         elif (reply == CMD_NACK):
-            print('flash write error at ' + hex(stm32_app_address))
+            print("flash write error at " + hex(stm32_app_address))
             break
 
         f_file_len -= payload_length
@@ -323,15 +328,99 @@ def stm32_write(bin_file):
 
         if(f_file_len == 0):
             print("flash write successfull, jolly good!!!!")
+            elapsed_time = millis() - start
+            print("elapsed time = {}ms".format(int(elapsed_time)))
+            print("write speed = {}kB/S".format(int(f_file_size/elapsed_time)))
 
     if(f_file_exist):
         bin_file_data.close()
         print("closing file")
     
-    elapsed_time = millis() - start
-    print("elapsed time = {}ms".format(int(elapsed_time)))
-    print("write speed = {}kB/S".format(int(f_file_size/elapsed_time)))
 
+def stm32_verify(bin_file):
+    
+    start = millis()
+    
+    f_file_len = 0
+    f_file_exist = False
+    f_file_size = 0
+    payload_length = 240
+    stm32_app_address = USER_APP_ADDRESS
+
+    print("opening file...")
+
+    try:
+        f_file_len = os.path.getsize(bin_file)
+        f_file_size = f_file_len
+        bin_file_data = open(bin_file, "rb")
+        print("file size " + str(f_file_len))
+        f_file_exist = True
+    except(OSError):
+        print("can not open " + bin_file)
+
+    while(f_file_len > 0):
+
+        if(f_file_len < payload_length):
+            payload_length = f_file_len
+
+        bl_packet = bytes()
+
+        # assemble cmd
+        bl_packet += int_to_bytes(CMD_VERIFY)
+
+        # no char to flash to stm32
+        bl_packet += int_to_bytes(payload_length)
+        
+        # 2 bytes padding for stm32 word alignment
+        bl_packet += int_to_bytes(0x00)
+        bl_packet += int_to_bytes(0x00)
+        
+        # assemble address
+        bl_packet += int_to_bytes(stm32_app_address >> 24 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 16 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 8 & 0xFF)
+        bl_packet += int_to_bytes(stm32_app_address >> 0 & 0xFF)
+                
+        # assemble payload
+        for x in range(payload_length):
+            bl_packet += bin_file_data.read(1)
+
+        # calculate crc
+        crc = CRC8(bl_packet, (payload_length + 8))
+
+        # assemble crc
+        bl_packet += int_to_bytes(crc)
+                        
+        # send sync char
+        Serial_Port.write(int_to_bytes(SYNC_CHAR))
+        
+        # send no char in bl_packet
+        Serial_Port.write(int_to_bytes(payload_length + 9))
+        
+        # send bl_packet
+        Serial_Port.write(bl_packet)
+
+        reply = stm32_read_ack()
+        #print(reply)
+        if(reply == CMD_ACK):
+            print("verify write success at " + hex(stm32_app_address))
+        elif (reply == CMD_NACK):
+            print("verify write error at " + hex(stm32_app_address))
+            break
+
+        f_file_len -= payload_length
+        stm32_app_address += payload_length
+        print("remaining bytes:{}".format(f_file_len))
+
+        if(f_file_len == 0):
+            print("verify write successfull, jolly good!!!!")
+            elapsed_time = millis() - start
+            print("elapsed time = {}ms".format(int(elapsed_time)))
+            print("verify speed = {}kB/S".format(int(f_file_size/elapsed_time)))
+
+    if(f_file_exist):
+        bin_file_data.close()
+        print("closing file")
 
 def main():
 
@@ -357,23 +446,29 @@ def main():
     if ser_open:
         print("Port open success")
 
-        if(cmd == 'write'):
+        if(cmd == "write"):
             if len(sys.argv) >= 5:
                 bin_file = sys.argv[4]
                 stm32_write(bin_file)
                 #stm32_jump()
             else:
-                print('please enter input file')
-        elif(cmd == 'erase'):
+                print("please enter input file")
+        elif(cmd == "erase"):
             stm32_erase()
-        elif(cmd == 'reset'):
+        elif(cmd == "reset"):
             stm32_reset()
-        elif(cmd == 'jump'):
+        elif(cmd == "jump"):
             stm32_jump()
-        elif(cmd == 'help'):
+        elif(cmd == "help"):
             stm32_get_help()
-        elif(cmd == 'read'):
+        elif(cmd == "read"):
             stm32_read_flash()
+        elif(cmd == "verify"):
+            if len(sys.argv) >= 5:
+                bin_file = sys.argv[4]
+                stm32_verify(bin_file)
+            else:
+                print("please enter input file to verfy")
         else:
             print("invalid cmd")
             
