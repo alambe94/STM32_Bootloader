@@ -6,7 +6,27 @@ import time
 
 
 USER_APP_ADDRESS = 0x08008000
-FLASH_SIZE = 480000
+FLASH_SIZE = 480000 #+512000 #uncomment for 407VG
+
+"""
+/*
+CMD_WRITE, CMD_VERIFY Frame 
+[SYNC_CHAR + frame len] frame len = 9 + payload len
+[1-byte cmd + 1-byte no of bytes to write + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC]
+*/
+
+/* 
+CMD_READ Frame 
+[SYNC_CHAR + frame len] frame len = 9
+[1-byte cmd + 1-byte no of bytes to read + 0x00 + 0x00 + 4-byte addes + 1-byte CRC]
+*/
+
+/* 
+CMD_ERASE, CMD_RESET, CMD_JUMP Frame 
+[SYNC_CHAR + frame len] frame len = 2
+[1-byte cmd + 1-byte CRC]
+*/
+"""
 
 CMD_WRITE = 0x50
 CMD_READ = 0x51
@@ -154,8 +174,6 @@ def stm32_read_flash():
         bl_packet = bytes()
         rcvd_packet = bytes()
 
-        # payload structure 1-byte cmd + payload_length + 0x00 + 0x00 + 4-byte addes  + payload + 1-byte CRC
-
         # assemble cmd
         bl_packet += int_to_bytes(CMD_READ)
         
@@ -182,7 +200,6 @@ def stm32_read_flash():
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
         
         # send no chars in bl_packet
-        # 0 bytes payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
         Serial_Port.write(int_to_bytes(9))  # total bytes in bl_packet
         
         # send bl_packet
@@ -252,7 +269,6 @@ def stm32_write(bin_file):
             payload_length = f_file_len
 
         bl_packet = bytes()
-        # payload structure 1-byte cmd + 1 byte payload lenth + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
 
         # assemble cmd
         bl_packet += int_to_bytes(CMD_WRITE)
@@ -288,7 +304,6 @@ def stm32_write(bin_file):
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
         
         # send no char in bl_packet
-        # payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
         Serial_Port.write(int_to_bytes(payload_length + 9))
         
         # send bl_packet

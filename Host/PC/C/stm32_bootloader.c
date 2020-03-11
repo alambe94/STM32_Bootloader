@@ -2,11 +2,30 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <sys/timeb.h>
 
 #include "serial_port.h"
 
 #define USER_APP_ADDRESS 0x08008000
-#define FLASH_SIZE  480000
+#define FLASH_SIZE  480000 //+ 512000 //uncomment for 407VG
+
+/* 
+CMD_WRITE, CMD_VERIFY Frame 
+[SYNC_CHAR + frame len] frame len = 9 + payload len
+[1-byte cmd + 1-byte no of bytes to write + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC]
+*/
+
+/* 
+CMD_READ Frame 
+[SYNC_CHAR + frame len] frame len = 9
+[1-byte cmd + 1-byte no of bytes to read + 0x00 + 0x00 + 4-byte addes + 1-byte CRC]
+*/
+
+/* 
+CMD_ERASE, CMD_RESET, CMD_JUMP Frame 
+[SYNC_CHAR + frame len] frame len = 2
+[1-byte cmd + 1-byte CRC]
+*/
 
 #define CMD_WRITE  0x50
 #define CMD_READ   0x51
@@ -49,6 +68,19 @@ uint8_t Open_Serial_port(char *port, uint32_t baud)
 #endif
 
 return status;
+}
+
+uint64_t system_current_time_millis()
+{
+#if defined(_WIN32)
+   struct _timeb timebuffer;
+   _ftime(&timebuffer);
+#else
+   struct timeb timebuffer;
+   ftime(&timebuffer);
+#endif
+
+return (uint64_t)(((timebuffer.time * 1000) + timebuffer.millitm));
 }
 
 /*Maxim APPLICATION NOTE 27 */
@@ -183,26 +215,26 @@ void stm32_jump()
    }
 }
 
-void stm32_read_flash(char *output_file)
+void stm32_read_flash()
 {
 
    FILE *fp = NULL;
 
-   uint32_t start_time = 0;
+   uint32_t start_time = system_current_time_millis();
    uint32_t read_len = FLASH_SIZE;
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-
+   
    uint8_t bl_packet[10];
    uint8_t rx_buffer[256];
    uint8_t bl_packet_index;
    uint8_t bytes_to_read = 248;
    uint8_t temp[1] = {0};
 
-   fp = fopen(output_file, "Wb");
+   fp = fopen("output_file.bin", "wb");
 
    if (fp == NULL)
    {
-      printf("can not create bin file %s\n", output_file);
+      printf("can not create bin file\n");
       return;
    }
 
@@ -217,8 +249,6 @@ void stm32_read_flash(char *output_file)
       memset(rx_buffer, 0x00, 256);
 
       bl_packet_index = 0;
-
-      // payload structure 1-byte cmd + payload_length + 0x00 + 0x00 + 4-byte addes  + payload + 1-byte CRC
 
       // assemble cmd
       bl_packet[bl_packet_index++] = CMD_READ;
@@ -247,7 +277,6 @@ void stm32_read_flash(char *output_file)
       Serial_Port_Write(Serial_Handle, temp, 1);
 
       // send no chars in bl_packet
-      // 0 bytes payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
       temp[0] = 9;
       Serial_Port_Write(Serial_Handle, temp, 1);
 
@@ -268,8 +297,8 @@ void stm32_read_flash(char *output_file)
 
          if (crc_recvd == crc_calc)
          {
-            fwrite(bl_packet, 1, bytes_to_read, fp);
-            printf("flash read succsess at %0X20\n", stm32_app_address);
+            fwrite(rx_buffer, 1, bytes_to_read, fp);
+            printf("flash read succsess at 0X%0x\n", stm32_app_address);
             read_len -= bytes_to_read;
             stm32_app_address += bytes_to_read;
             printf("remaining bytes: %i\n", read_len);
@@ -277,33 +306,38 @@ void stm32_read_flash(char *output_file)
          else
          {
             printf("crc mismatch\n");
-            break;
          }
       }
       else
       {
-         printf("flash read error at %0x20\n", stm32_app_address);
+         printf("flash read error at 0X%0x\n", stm32_app_address);
+         break;
       }
-
-      if (read_len == 0)
-      {
-         printf("flash read successfull, jolly good!!!!\n");
-      }
-
-      fclose(fp);
    }
 
-   uint32_t elapsed_time = 50000 - start_time;
-   printf("elapsed time = %i ms\n", elapsed_time);
-   printf("read speed = %skB/S\n", 1000 / elapsed_time);
+   if (read_len == 0)
+   {
+      printf("flash read successfull, jolly good!!!!\n");
+   }
+
+   rewind(fp);
+   fseek(fp, 0L, SEEK_END);
+   uint32_t f_file_size = ftell(fp);
+   fclose(fp);
+
+   uint32_t elapsed_time = system_current_time_millis() - start_time;
+   printf("elapsed time = %ims\n", elapsed_time);
+   printf("read speed = %ikB/S\n", f_file_size / elapsed_time);
 }
 
 void stm32_write(char *input_file)
 {
    FILE *fp = NULL;
 
-   uint32_t start_time = 1;
+   uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
+   uint32_t f_file_len;
+   uint32_t f_file_size;
 
    uint8_t payload_length = 240;
    uint8_t bl_packet[256];
@@ -321,9 +355,10 @@ void stm32_write(char *input_file)
    else
    {
       fseek(fp, 0L, SEEK_END);
-      uint32_t f_file_len = ftell(fp);
+      f_file_len = ftell(fp);
       rewind(fp);
       printf("file size %i\n", f_file_len);
+      f_file_size = f_file_len;
 
       while (f_file_len > 0)
       {
@@ -331,8 +366,6 @@ void stm32_write(char *input_file)
          {
             payload_length = f_file_len;
          }
-
-         // payload structure 1-byte cmd + 1 byte payload lenth + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC
 
          memset(bl_packet, 0x00, 256);
          bl_packet_index = 0;
@@ -370,7 +403,6 @@ void stm32_write(char *input_file)
          Serial_Port_Write(Serial_Handle, temp, 1);
 
          // send no char in bl_packet
-         // payload_length + cmd + 3 bytes padding + 4 bytes address + 1 byte crc
          temp[0] = bl_packet_index;
          Serial_Port_Write(Serial_Handle, temp, 1);
 
@@ -380,30 +412,30 @@ void stm32_write(char *input_file)
 
          if (reply == CMD_ACK)
          {
-            printf("flash write success at %0X2\n", stm32_app_address);
+            printf("flash write success at 0X%0x\n", stm32_app_address);
          }
          else
          {
-            printf("flash write error at %0X2\n", stm32_app_address);
+            printf("flash write error at 0X%0x\n", stm32_app_address);
             break;
          }
 
          f_file_len -= payload_length;
          stm32_app_address += payload_length;
          printf("remaining bytes: %i\n", f_file_len);
-
-         if (f_file_len == 0)
-         {
-            printf("flash write successfull, jolly good!!!!\n");
-         }
-
-         fclose(fp);
-         printf("closing file\n");
-
-         uint32_t elapsed_time = 5000 - start_time;
-         printf("elapsed time = %ims\n", elapsed_time);
-         printf("write speed = %ikB/S\n", f_file_len / elapsed_time);
       }
+
+      if (f_file_len == 0)
+      {
+         printf("flash write successfull, jolly good!!!!\n");
+      }
+
+      fclose(fp);
+      printf("closing file\n");
+
+      uint32_t elapsed_time = system_current_time_millis() - start_time;
+      printf("elapsed time = %ims\n", elapsed_time);
+      printf("write speed = %ikB/S\n", f_file_size / elapsed_time);
    }
 }
 
@@ -462,17 +494,7 @@ int main(int argc, char *argv[])
       }
       else if (strncmp(cmd, "read", strlen("read")) == 0)
       {
-         if (argc >= 5)
-         {
-            char *bin_file = argv[4];
-            printf("input file = %s\n", bin_file);
-            stm32_read_flash(bin_file);
-         }
-         else
-         {
-            printf("please enter ouput file\n");
-         }
-      
+         stm32_read_flash();
       }
       else
       {

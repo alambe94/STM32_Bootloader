@@ -87,6 +87,24 @@ UART_HandleTypeDef* BL_UART = &huart6;
 #endif
 
 
+/*
+CMD_WRITE, CMD_VERIFY Frame
+[SYNC_CHAR + frame len] frame len = 9 + payload len
+[1-byte cmd + 1-byte no of bytes to write + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC]
+*/
+
+/*
+CMD_READ Frame
+[SYNC_CHAR + frame len] frame len = 9
+[1-byte cmd + 1-byte no of bytes to read + 0x00 + 0x00 + 4-byte addes + 1-byte CRC]
+*/
+
+/*
+CMD_ERASE, CMD_RESET, CMD_JUMP Frame
+[SYNC_CHAR + frame len] frame len = 2
+[1-byte cmd + 1-byte CRC]
+*/
+
 #define BL_CMD_WRITE  0x50
 #define BL_CMD_READ   0x51
 #define BL_CMD_ERASE  0x52
@@ -102,8 +120,8 @@ UART_HandleTypeDef* BL_UART = &huart6;
 
 #define BL_SYNC_CHAR  '$'
 
-#define  BL_RX_BUFFER_SIZE   (255)
-#define  BL_TX_BUFFER_SIZE   (255)
+#define  BL_RX_BUFFER_SIZE   (256)
+#define  BL_TX_BUFFER_SIZE   (256)
 
 uint8_t  BL_RX_Buffer[BL_RX_BUFFER_SIZE];
 uint8_t  BL_TX_Buffer[BL_TX_BUFFER_SIZE];
@@ -365,8 +383,6 @@ void BL_Loop()
 
 		    if (HAL_UART_Receive(BL_UART, BL_RX_Buffer, packet_len, 5000) == HAL_OK)
 			{
-
-			//frame structure 1-byte cmd + 1 byte payload len + 0x00 + 0x00 + 4-byte address +  payload + 1-byte CRC
 
 			uint8_t cmd = BL_RX_Buffer[0];
 			len = BL_RX_Buffer[1];
