@@ -66,13 +66,11 @@ void Serial_Port_Close(SERIAL_HANDLE hComm)
 void Serial_Port_Timeout(SERIAL_HANDLE hComm, uint32_t len)
 {
 
-COMMTIMEOUTS timeouts = {0};
-GetCommTimeouts(hComm, &timeouts);
+    COMMTIMEOUTS timeouts = {0};
+    GetCommTimeouts(hComm, &timeouts);
 
-timeouts.ReadTotalTimeoutConstant = len;
-
-SetCommTimeouts(hComm, &timeouts);
-
+    timeouts.ReadTotalTimeoutConstant = len;
+    SetCommTimeouts(hComm, &timeouts);
 }
 #endif
 
