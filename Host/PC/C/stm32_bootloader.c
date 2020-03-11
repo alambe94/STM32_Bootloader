@@ -42,7 +42,6 @@ CMD_ERASE, CMD_RESET, CMD_JUMP Frame
 
 #define SYNC_CHAR  '$'
 
-
 char *com_port = NULL;
 uint32_t baud_rate = 0;
 char *cmd = NULL;
@@ -189,6 +188,8 @@ void stm32_reset()
 
    uint8_t reply = stm32_read_ack();
 
+   printf("ack = 0X%0x\n", reply);
+
    if (reply == CMD_ACK)
    {
       printf("mcu reset\n");
@@ -277,7 +278,7 @@ void stm32_read_flash()
       Serial_Port_Write(Serial_Handle, temp, 1);
 
       // send no chars in bl_packet
-      temp[0] = 9;
+      temp[0] = bl_packet_index;
       Serial_Port_Write(Serial_Handle, temp, 1);
 
       // send bl_packet
@@ -289,8 +290,11 @@ void stm32_read_flash()
       {
          uint8_t crc_recvd;
 
-         Serial_Port_Read(Serial_Handle, rx_buffer, bytes_to_read);
-
+         for (size_t i = 0; i < bytes_to_read; i++)
+         {
+            Serial_Port_Read(Serial_Handle, rx_buffer+i, 1);
+         }
+         
          Serial_Port_Read(Serial_Handle, &crc_recvd, 1);
 
          uint8_t crc_calc = CRC8(rx_buffer, bytes_to_read);
@@ -306,6 +310,8 @@ void stm32_read_flash()
          else
          {
             printf("crc mismatch\n");
+            printf("crc_recvd %i\n", crc_recvd);
+            printf("crc_calc %i\n", crc_calc);
          }
       }
       else
@@ -461,7 +467,7 @@ int main(int argc, char *argv[])
 
    if (Open_Serial_port(com_port, baud_rate))
    {
-      printf("Port open success\n");
+      printf("port open success\n");
 
       if (strncmp(cmd, "write", strlen("write")) == 0)
       {
@@ -501,7 +507,7 @@ int main(int argc, char *argv[])
          printf("Invalid cmd\n");
       }
 
-      printf("Closing port\n");
+      printf("closing port\n");
       Serial_Port_Close(Serial_Handle);
    }
    else

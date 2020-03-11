@@ -74,40 +74,71 @@ void Serial_Port_Timeout(SERIAL_HANDLE hComm, uint32_t len)
 }
 #endif
 
-
 #ifdef __linux__
+
 SERIAL_HANDLE Serial_Port_Config(uint8_t *port, uint32_t baud)
 {
 
-    SERIAL_HANDLE fd;                              /* File Descriptor */
-    struct termios SerialPortSettings;             /* Create the structure */
-    
+    SERIAL_HANDLE fd;   /* File Descriptor */
+    struct termios tty; /* Create the structure */
 
-    fd = open(port, O_RDWR | O_NOCTTY | O_NDELAY); /* ttyUSB0 is the FT232 based USB2SERIAL Converter   */
-                                                   /* O_RDWR Read/Write access to serial port           */
-                                                   /* O_NOCTTY - No terminal will control the process   */
-                                                   /* O_NDELAY -Non Blocking Mode,Does not care about-  */
-                                                   /* -the status of DCD line,Open() returns immediatly */
+    switch (baud)
+    {
+    case 9600:
+        baud = B9600;
+        break;
+    case 19200:
+        baud = B19200;
+        break;
+    case 38400:
+        baud = B38400;
+        break;
+    case 57600:
+        baud = B57600;
+        break;
+    case 115200:
+        baud = B115200;
+        break;
+    case 230400:
+        baud = B230400;
+        break;
+    case 500000:
+        baud = B500000;
+        break;
 
-    cfsetispeed(&SerialPortSettings, baud); /* Set Read  Speed                        */
-    cfsetospeed(&SerialPortSettings, baud); /* Set Write Speed                        */
+    default:
+        baud = B115200;
+        break;
+    }
 
-    SerialPortSettings.c_cflag &= ~PARENB; /* Disables the Parity Enable bit(PARENB),So No Parity   */
-    SerialPortSettings.c_cflag &= ~CSTOPB; /* CSTOPB = 2 Stop bits,here it is cleared so 1 Stop bit */
-    SerialPortSettings.c_cflag &= ~CSIZE;  /* Clears the mask for setting the data size             */
-    SerialPortSettings.c_cflag |= CS8;     /* Set the data bits = 8                                 */
+    fd = open(port, O_RDWR);
 
-    SerialPortSettings.c_cflag &= ~CRTSCTS;       /* No Hardware flow Control                         */
-    SerialPortSettings.c_cflag |= CREAD | CLOCAL; /* Enable receiver,Ignore Modem Control lines       */
+    tty.c_cflag &= ~PARENB;        // Clear parity bit, disabling parity (most common)
+    tty.c_cflag &= ~CSTOPB;        // Clear stop field, only one stop bit used in communication (most common)
+    tty.c_cflag |= CS8;            // 8 bits per byte (most common)
+    tty.c_cflag &= ~CRTSCTS;       // Disable RTS/CTS hardware flow control (most common)
+    tty.c_cflag |= CREAD | CLOCAL; // Turn on READ & ignore ctrl lines (CLOCAL = 1)
 
-    SerialPortSettings.c_iflag &= ~(IXON | IXOFF | IXANY);         /* Disable XON/XOFF flow control both i/p and o/p */
-    SerialPortSettings.c_iflag &= ~(ICANON | ECHO | ECHOE | ISIG); /* Non Cannonical mode                            */
+    tty.c_lflag &= ~ICANON;
+    tty.c_lflag &= ~ECHO;                                                        // Disable echo
+    tty.c_lflag &= ~ECHOE;                                                       // Disable erasure
+    tty.c_lflag &= ~ECHONL;                                                      // Disable new-line echo
+    tty.c_lflag &= ~ISIG;                                                        // Disable interpretation of INTR, QUIT and SUSP
+    tty.c_iflag &= ~(IXON | IXOFF | IXANY);                                      // Turn off s/w flow ctrl
+    tty.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL); // Disable any special handling of received bytes
 
-    SerialPortSettings.c_oflag &= ~OPOST; /*No Output Processing*/
+    tty.c_oflag &= ~OPOST; // Prevent special interpretation of output bytes (e.g. newline chars)
+    tty.c_oflag &= ~ONLCR; // Prevent conversion of newline to carriage return/line feed
+                           // tty.c_oflag &= ~OXTABS; // Prevent conversion of tabs to spaces (NOT PRESENT ON LINUX)
+                           // tty.c_oflag &= ~ONOEOT; // Prevent removal of C-d chars (0x004) in output (NOT PRESENT ON LINUX)
+
+    tty.c_cc[VTIME] = 10; // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
+    tty.c_cc[VMIN] = 1;
 
     if (fd != -1)
     {
-        tcsetattr(fd, TCSANOW, &SerialPortSettings);
+        tcsetattr(fd, TCSANOW, &tty);
+        tcflush(fd, TCIOFLUSH);
     }
 
     return fd;
@@ -126,11 +157,11 @@ return bytes_count;
 uint32_t Serial_Port_Read(SERIAL_HANDLE fd, uint8_t *buf, uint32_t len)
 {
 
-uint32_t bytes_count = 0;                    // No of bytes read from the port   
+    uint32_t bytes_count = -1; // No of bytes read from the port
+    
+    bytes_count = read(fd, buf, 1);
 
-bytes_count = read(fd, &buf, len);
-
-return bytes_count;
+    return bytes_count;
 }
 
 void Serial_Port_Close(SERIAL_HANDLE fd)
@@ -138,15 +169,16 @@ void Serial_Port_Close(SERIAL_HANDLE fd)
     close(fd); //Closing the Serial Port
 }
 
-void Serial_Port_timeout(SERIAL_HANDLE fd, uint32_t len)
+void Serial_Port_Timeout(SERIAL_HANDLE fd, uint32_t len)
 {
 
-COMMTIMEOUTS timeouts = {0};
-GetCommTimeouts(hComm, &timeouts);
+    struct termios tty;
 
-timeouts.ReadTotalTimeoutConstant = len;
+    tcgetattr(fd, &tty);
 
-SetCommTimeouts(hComm, &timeouts);
+    tty.c_cc[VTIME] = len /100;
 
+    tcsetattr(fd, TCSANOW, &tty);
 }
+
 #endif

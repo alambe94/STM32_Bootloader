@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <unistd.h>
 
 #ifdef _WIN32
 #define SERIAL_HANDLE HANDLE
@@ -18,9 +19,9 @@
 #endif
 
 SERIAL_HANDLE Serial_Port_Config(uint8_t *port, uint32_t baud);
-uint32_t Serial_Port_Write(SERIAL_HANDLE hComm, uint8_t *str, uint32_t len);
-uint32_t Serial_Port_Read(SERIAL_HANDLE hComm, uint8_t *buf, uint32_t len);
-void Serial_Port_Close(SERIAL_HANDLE hComm);
-void Serial_Port_Timeout(SERIAL_HANDLE hComm, uint32_t len);
+uint32_t Serial_Port_Write(SERIAL_HANDLE handle, uint8_t *str, uint32_t len);
+uint32_t Serial_Port_Read(SERIAL_HANDLE handle, uint8_t *buf, uint32_t len);
+void Serial_Port_Close(SERIAL_HANDLE handle);
+void Serial_Port_Timeout(SERIAL_HANDLE handle, uint32_t len);
 
 #endif
