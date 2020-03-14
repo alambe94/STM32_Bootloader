@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <Button
+        android:id="@+id/btSaveFile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="356dp"
+        android:text="@string/save"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLog"
+        app:layout_constraintStart_toStartOf="@+id/btReadFile" />
+
+    <Button
+        android:id="@+id/btOpenFile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="356dp"
+        android:text="@string/open"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLog"
+        app:layout_constraintEnd_toEndOf="@+id/btWrite" />
+
+    <Button
+        android:id="@+id/btWrite"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/write"
+        app:layout_constraintEnd_toEndOf="@+id/tvLog"
+        app:layout_constraintTop_toTopOf="@+id/btVerify" />
+
+    <Button
+        android:id="@+id/btReadFile"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="424dp"
+        android:text="@string/read"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLog"
+        app:layout_constraintStart_toStartOf="@+id/tvLog" />
+
+    <Button
+        android:id="@+id/btEraseMcu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/erase"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLog"
+        app:layout_constraintEnd_toEndOf="@+id/btVerify"
+        app:layout_constraintTop_toTopOf="@+id/btJumpMcu"
+        app:layout_constraintVertical_bias="0.0" />
+
+    <Button
+        android:id="@+id/btResetMcu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/reset"
+        app:layout_constraintEnd_toEndOf="@+id/btOpenFile"
+        app:layout_constraintTop_toTopOf="@+id/btEraseMcu" />
+
+    <Button
+        android:id="@+id/btJumpMcu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="288dp"
+        android:text="@string/jump"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLog"
+        app:layout_constraintStart_toStartOf="@+id/btSaveFile" />
+
+    <TextView
+        android:id="@+id/tvLog"
+        android:layout_width="324dp"
+        android:layout_height="222dp"
+        android:layout_marginBottom="60dp"
+        android:scrollbars="vertical"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.505"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="324dp"
+        android:layout_height="20dp"
+        android:layout_marginBottom="240dp"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLog"
+        app:layout_constraintEnd_toEndOf="@+id/tvLog"
+        app:layout_constraintStart_toStartOf="@+id/tvLog" />
+
+    <Button
+        android:id="@+id/btVerify"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="28dp"
+        android:text="@string/verify"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLog"
+        app:layout_constraintEnd_toStartOf="@+id/btWrite"
+        app:layout_constraintTop_toTopOf="@+id/btReadFile"
+        app:layout_constraintVertical_bias="0.0" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

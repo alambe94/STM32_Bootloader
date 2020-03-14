@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">STM32_Flasher</string>
+    <string name="bluetooth">Bluetooth</string>
+    <string name="usb_serial">USB Serial</string>
+    <string name="bluetooth_off">Bluetooth Off</string>
+    <string name="open">Open</string>
+    <string name="log">log</string>
+    <string name="write">Write</string>
+    <string name="read">Read</string>
+    <string name="erase">Erase</string>
+    <string name="reset">Reset</string>
+    <string name="jump">Jump</string>
+    <string name="bluetooth_on">Bluetooth On</string>
+    <string name="save">Save</string>
+    <string name="verify">Verify</string>
+</resources>

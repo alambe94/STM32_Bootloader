@@ -34,7 +34,7 @@
 		<link>
 			<name>bootloader</name>
 			<type>2</type>
-			<location>D:/ST/STM32_Bootloader/bootloader</location>
+			<location>/home/medprime/Documents/Projects/alsaad/Cube/WorkSpace/STM32_Bootloader/bootloader</location>
 		</link>
 	</linkedResources>
 </projectDescription>
