@@ -146,7 +146,11 @@ uint8_t stm32_read_ack()
 {
    uint8_t rx_char;
    Serial_Port_Read(Serial_Handle, &rx_char, 1);
-   return rx_char;
+   if (rx_char == CMD_ACK)
+   {
+      return 1;
+   }
+   return 0;
 }
 
 void stm32_erase()
@@ -156,8 +160,7 @@ void stm32_erase()
 
    stm32_send_cmd(CMD_ERASE);
 
-   uint8_t reply = stm32_read_ack();
-   if (reply == CMD_ACK)
+   if (stm32_read_ack())
    {
       printf("flash erase success\n");
    }
@@ -185,11 +188,7 @@ void stm32_reset()
 
    stm32_send_cmd(CMD_RESET);
 
-   uint8_t reply = stm32_read_ack();
-
-   printf("ack = 0X%0x\n", reply);
-
-   if (reply == CMD_ACK)
+   if (stm32_read_ack())
    {
       printf("mcu reset\n");
    }
@@ -203,9 +202,7 @@ void stm32_jump()
 {
    stm32_send_cmd(CMD_JUMP);
 
-   uint8_t reply = stm32_read_ack();
-
-   if (reply == CMD_ACK)
+   if (stm32_read_ack())
    {
       printf("entering user application\n");
    }
@@ -221,13 +218,13 @@ void stm32_read_flash()
    FILE *fp = NULL;
 
    uint32_t start_time = system_current_time_millis();
-   uint32_t read_len = FLASH_SIZE;
+   uint32_t remaining_bytes = FLASH_SIZE;
    uint32_t stm32_app_address = USER_APP_ADDRESS;
 
    uint8_t bl_packet[10];
    uint8_t rx_buffer[256];
    uint8_t bl_packet_index;
-   uint8_t bytes_to_read = 248;
+   uint8_t read_block_size = 240;
    uint8_t temp[1] = {0};
 
    fp = fopen("output_file.bin", "wb");
@@ -238,12 +235,12 @@ void stm32_read_flash()
       return;
    }
 
-   while (read_len > 0)
+   while (remaining_bytes > 0)
    {
 
-      if (read_len < bytes_to_read)
+      if (remaining_bytes < read_block_size)
       {
-         bytes_to_read = read_len;
+         read_block_size = remaining_bytes;
       }
       memset(bl_packet, 0x00, 10);
       memset(rx_buffer, 0x00, 256);
@@ -254,7 +251,7 @@ void stm32_read_flash()
       bl_packet[bl_packet_index++] = CMD_READ;
 
       // no char to receive from stm32
-      bl_packet[bl_packet_index++] = bytes_to_read;
+      bl_packet[bl_packet_index++] = read_block_size;
 
       // 2 bytes padding for stm32 word alignment
       bl_packet[bl_packet_index++] = 0x00;
@@ -267,7 +264,7 @@ void stm32_read_flash()
       bl_packet[bl_packet_index++] = (stm32_app_address >> 0 & 0xFF);
 
       // calculate crc
-      uint8_t crc = CRC8(bl_packet, 8);
+      uint8_t crc = CRC8(bl_packet, bl_packet_index);
 
       // assemble crc
       bl_packet[bl_packet_index++] = crc;
@@ -283,28 +280,26 @@ void stm32_read_flash()
       // send bl_packet
       Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
 
-      uint8_t reply = stm32_read_ack();
-
-      if (reply == CMD_ACK)
+      if (stm32_read_ack())
       {
          uint8_t crc_recvd;
 
-         for (size_t i = 0; i < bytes_to_read; i++)
+         for (size_t i = 0; i < read_block_size; i++)
          {
             Serial_Port_Read(Serial_Handle, rx_buffer + i, 1);
          }
 
          Serial_Port_Read(Serial_Handle, &crc_recvd, 1);
 
-         uint8_t crc_calc = CRC8(rx_buffer, bytes_to_read);
+         uint8_t crc_calc = CRC8(rx_buffer, read_block_size);
 
          if (crc_recvd == crc_calc)
          {
-            fwrite(rx_buffer, 1, bytes_to_read, fp);
+            fwrite(rx_buffer, 1, read_block_size, fp);
             printf("flash read succsess at 0X%0x\n", stm32_app_address);
-            read_len -= bytes_to_read;
-            stm32_app_address += bytes_to_read;
-            printf("remaining bytes: %i\n", read_len);
+            remaining_bytes -= read_block_size;
+            stm32_app_address += read_block_size;
+            printf("remaining bytes: %i\n", remaining_bytes);
          }
          else
          {
@@ -320,7 +315,7 @@ void stm32_read_flash()
       }
    }
 
-   if (read_len == 0)
+   if (remaining_bytes == 0)
    {
       printf("flash read successfull, jolly good!!!!\n");
       rewind(fp);
@@ -340,10 +335,10 @@ void stm32_write(char *input_file)
 
    uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-   uint32_t f_file_len;
+   uint32_t remaining_bytes;
    uint32_t f_file_size;
 
-   uint8_t payload_length = 240;
+   uint8_t write_block_size = 240;
    uint8_t bl_packet[256];
    uint8_t bl_packet_index = 0;
    uint8_t temp[1] = {0};
@@ -359,16 +354,16 @@ void stm32_write(char *input_file)
    else
    {
       fseek(fp, 0L, SEEK_END);
-      f_file_len = ftell(fp);
+      remaining_bytes = ftell(fp);
       rewind(fp);
-      printf("file size %i\n", f_file_len);
-      f_file_size = f_file_len;
+      printf("file size %i\n", remaining_bytes);
+      f_file_size = remaining_bytes;
 
-      while (f_file_len > 0)
+      while (remaining_bytes > 0)
       {
-         if (f_file_len < payload_length)
+         if (remaining_bytes < write_block_size)
          {
-            payload_length = f_file_len;
+            write_block_size = remaining_bytes;
          }
 
          memset(bl_packet, 0x00, 256);
@@ -378,7 +373,7 @@ void stm32_write(char *input_file)
          bl_packet[bl_packet_index++] = CMD_WRITE;
 
          // no char to flash to stm32
-         bl_packet[bl_packet_index++] = payload_length;
+         bl_packet[bl_packet_index++] = write_block_size;
 
          // 2 bytes padding for stm32 word alignment
          bl_packet[bl_packet_index++] = 0x00;
@@ -388,14 +383,14 @@ void stm32_write(char *input_file)
          bl_packet[bl_packet_index++] = (stm32_app_address >> 24 & 0xFF);
          bl_packet[bl_packet_index++] = (stm32_app_address >> 16 & 0xFF);
          bl_packet[bl_packet_index++] = (stm32_app_address >> 8 & 0xFF);
-         bl_packet[bl_packet_index++] = (stm32_app_address >> 0 & 0xFF);
+         bl_packet[bl_packet_index++] = (stm32_app_address & 0xFF);
 
          // assemble payload
-         fread(&bl_packet[bl_packet_index], 1, payload_length, fp);
-         bl_packet_index += payload_length;
+         fread(&bl_packet[bl_packet_index], 1, write_block_size, fp);
+         bl_packet_index += write_block_size;
 
          // calculate crc
-         uint8_t crc = CRC8(bl_packet, (payload_length + 8));
+         uint8_t crc = CRC8(bl_packet, bl_packet_index);
 
          // assemble crc
          bl_packet[bl_packet_index++] = crc;
@@ -411,9 +406,7 @@ void stm32_write(char *input_file)
          // send in bl_packet
          Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
 
-         uint8_t reply = stm32_read_ack();
-
-         if (reply == CMD_ACK)
+         if (stm32_read_ack())
          {
             printf("flash write success at 0X%0x\n", stm32_app_address);
          }
@@ -423,12 +416,12 @@ void stm32_write(char *input_file)
             break;
          }
 
-         f_file_len -= payload_length;
-         stm32_app_address += payload_length;
-         printf("remaining bytes: %i\n", f_file_len);
+         remaining_bytes -= write_block_size;
+         stm32_app_address += write_block_size;
+         printf("remaining bytes: %i\n", remaining_bytes);
       }
 
-      if (f_file_len == 0)
+      if (remaining_bytes == 0)
       {
          printf("flash write successfull, jolly good!!!!\n");
          uint32_t elapsed_time = system_current_time_millis() - start_time;
@@ -447,10 +440,10 @@ void stm32_verify(char *input_file)
 
    uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-   uint32_t f_file_len;
+   uint32_t remaining_bytes;
    uint32_t f_file_size;
 
-   uint8_t payload_length = 240;
+   uint8_t write_block_size = 240;
    uint8_t bl_packet[256];
    uint8_t bl_packet_index = 0;
    uint8_t temp[1] = {0};
@@ -466,16 +459,16 @@ void stm32_verify(char *input_file)
    else
    {
       fseek(fp, 0L, SEEK_END);
-      f_file_len = ftell(fp);
+      remaining_bytes = ftell(fp);
       rewind(fp);
-      printf("file size %i\n", f_file_len);
-      f_file_size = f_file_len;
+      printf("file size %i\n", remaining_bytes);
+      f_file_size = remaining_bytes;
 
-      while (f_file_len > 0)
+      while (remaining_bytes > 0)
       {
-         if (f_file_len < payload_length)
+         if (remaining_bytes < write_block_size)
          {
-            payload_length = f_file_len;
+            write_block_size = remaining_bytes;
          }
 
          memset(bl_packet, 0x00, 256);
@@ -485,7 +478,7 @@ void stm32_verify(char *input_file)
          bl_packet[bl_packet_index++] = CMD_VERIFY;
 
          // no char to flash to stm32
-         bl_packet[bl_packet_index++] = payload_length;
+         bl_packet[bl_packet_index++] = write_block_size;
 
          // 2 bytes padding for stm32 word alignment
          bl_packet[bl_packet_index++] = 0x00;
@@ -498,11 +491,11 @@ void stm32_verify(char *input_file)
          bl_packet[bl_packet_index++] = (stm32_app_address >> 0 & 0xFF);
 
          // assemble payload
-         fread(&bl_packet[bl_packet_index], 1, payload_length, fp);
-         bl_packet_index += payload_length;
+         fread(&bl_packet[bl_packet_index], 1, write_block_size, fp);
+         bl_packet_index += write_block_size;
 
          // calculate crc
-         uint8_t crc = CRC8(bl_packet, (payload_length + 8));
+         uint8_t crc = CRC8(bl_packet, bl_packet_index);
 
          // assemble crc
          bl_packet[bl_packet_index++] = crc;
@@ -518,9 +511,7 @@ void stm32_verify(char *input_file)
          // send bl_packet
          Serial_Port_Write(Serial_Handle, bl_packet, bl_packet_index);
 
-         uint8_t reply = stm32_read_ack();
-
-         if (reply == CMD_ACK)
+         if (stm32_read_ack())
          {
             printf("verify success at 0X%0x\n", stm32_app_address);
          }
@@ -530,12 +521,12 @@ void stm32_verify(char *input_file)
             break;
          }
 
-         f_file_len -= payload_length;
-         stm32_app_address += payload_length;
-         printf("remaining bytes: %i\n", f_file_len);
+         remaining_bytes -= write_block_size;
+         stm32_app_address += write_block_size;
+         printf("remaining bytes: %i\n", remaining_bytes);
       }
 
-      if (f_file_len == 0)
+      if (remaining_bytes == 0)
       {
          printf("verify successfull, jolly good!!!!\n");
          uint32_t elapsed_time = system_current_time_millis() - start_time;
