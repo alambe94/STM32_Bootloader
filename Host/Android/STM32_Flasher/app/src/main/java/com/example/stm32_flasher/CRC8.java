@@ -3,7 +3,7 @@ package com.example.stm32_flasher;
 public class CRC8 {
 
     /*Maxim APPLICATION NOTE 27 */
-    private static final byte[] CRC8_Table =
+    private static final byte[] crc8Table =
             {
                     0, 94, (byte) 188, (byte) 226, 97, 63, (byte) 221, (byte) 131, (byte) 194, (byte) 156, 126, 32, (byte) 163, (byte) 253, 31, 65,
                     (byte) 157, (byte) 195, 33, 127, (byte) 252, (byte) 162, 64, 30, 95, 1, (byte) 227, (byte) 189, 62, 96, (byte) 130, (byte) 220,
@@ -25,7 +25,7 @@ public class CRC8 {
     public static byte getCRC8(byte[] data, int len) {
         byte crc = 0;
         for (int i = 0; i < len; i++) {
-            crc = (CRC8_Table[crc ^ data[i]]);
+            crc = (crc8Table[crc ^ data[i]]);
         }
         return crc;
     }

@@ -6,7 +6,7 @@ public final class BootLoaderConstants {
     public static final int STM32_FLASH_SIZE = 480000;
 
     public static final int MESSAGE_LOG = 11;
-    public static final int MESSAGE_PROGRESS_BAR = 11;
+    public static final int MESSAGE_PROGRESS_BAR = 12;
 
     public static final byte CMD_WRITE = 0x50;
     public static final byte CMD_READ = 0x51;

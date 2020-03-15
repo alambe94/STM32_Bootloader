@@ -36,13 +36,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String TAG = "STM32_Flasher";
     static final UUID myUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
-    private ProgressDialog bt_connection_progress;
-    private String bluetooth_address;
+    private ProgressDialog btConnectionProgress;
+    private String bluetoothAddress;
     private boolean isBtConnected = false;
     private String serial_port;
 
-    private Uri fileUri;
-    private String filePath;
+    private boolean isSetFlash = false;
+    private boolean isGetFlash = false;
+
 
     BootLoader bootLoaderThread;
     private static Handler tvLogHandler;
@@ -65,8 +66,8 @@ public class MainActivity extends AppCompatActivity {
         pBar.setProgress(0);
 
         Intent intent = getIntent();
-        bluetooth_address = intent.getStringExtra(ComBluetooth.EXTRA_ADDRESS);
-        if (bluetooth_address != null) {
+        bluetoothAddress = intent.getStringExtra(ComBluetooth.EXTRA_ADDRESS);
+        if (bluetoothAddress != null) {
             // connect bluetooth
             new ConnectBT().execute();
         }
@@ -128,12 +129,11 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btWrite).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                if (fileUri != null) {
+                if (isSetFlash) {
                     tvLog.append("writing stm32 flash\n");
-                /////////////////////
+                    bootLoaderThread.cmdRun(BootLoaderConstants.CMD_WRITE);
                 } else {
-                    tvLog.append("please first select file to flash\n");
+                    tvLog.append("please first select the file to flash\n");
                 }
             }
         });
@@ -142,9 +142,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 tvLog.append("reading stm32 flash\n");
-
-                ////////////////////////
-
+                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_READ);
             }
         });
 
@@ -152,8 +150,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 tvLog.append("erasing stm32\n");
-
-                //////////////////////////
+                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_ERASE);
             }
         });
 
@@ -161,17 +158,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 tvLog.append("resetting mcu\n");
-
-                //////////////////////////
+                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_RESET);
             }
         });
 
         findViewById(R.id.btJumpMcu).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                tvLog.append("enetr user app\n");
-
-                ////////////////////////
+                tvLog.append("entering user app\n");
+                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_JUMP);
             }
         });
     }
@@ -180,17 +175,31 @@ public class MainActivity extends AppCompatActivity {
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == BootLoaderConstants.PICK_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
-            fileUri = data.getData();
-            if (fileUri != null) {
-                filePath = fileUri.getPath();
-                ///////////////////////////
-            }
-            tvLog.append("selected file = " + filePath + "\n");
-        } else if (requestCode == BootLoaderConstants.SAVE_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
-            if (data != null
-                    && data.getData() != null) {
+            if (data.getData() != null && data.getData().getPath() != null) {
+                try {
+                    InputStream ins = getContentResolver().openInputStream(data.getData());
+                    if (ins != null) {
+                        byte[] writBytes = new byte[ins.available()];
+                        tvLog.append("selected file and size " + data.getData().getPath() + writBytes.length +"\n");
+                        bootLoaderThread.stm32SetFlashData(writBytes);
+                    }
 
-                //////////////////////////
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        } else if (requestCode == BootLoaderConstants.SAVE_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
+            if (data.getData() != null && data.getData().getPath() != null) {
+                try {
+                    OutputStream ots = getContentResolver().openOutputStream(data.getData());
+                    if (ots != null) {
+                        ots.write(bootLoaderThread.stm32GetFlashData());
+                        ots.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
             }
 
         }
@@ -205,7 +214,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPreExecute() {
-            bt_connection_progress = ProgressDialog.show(MainActivity.this, "Connecting...", "Please wait!!!");  //show a progress dialog
+            btConnectionProgress = ProgressDialog.show(MainActivity.this, "Connecting...", "Please wait!!!");  //show a progress dialog
         }
 
         @Override
@@ -213,7 +222,7 @@ public class MainActivity extends AppCompatActivity {
         {
             try {
                 if (!isBtConnected) {
-                    BluetoothDevice BT = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bluetooth_address);//connects to the device's address and checks if it's available
+                    BluetoothDevice BT = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bluetoothAddress);//connects to the device's address and checks if it's available
                     btSocket = BT.createInsecureRfcommSocketToServiceRecord(myUUID);//create a RFCOMM (SPP) connection
                     BluetoothAdapter.getDefaultAdapter().cancelDiscovery();
                     btSocket.connect();//start connection
@@ -258,7 +267,7 @@ public class MainActivity extends AppCompatActivity {
                 bootLoaderThread.start();
 
             }
-            bt_connection_progress.dismiss();
+            btConnectionProgress.dismiss();
         }
     }
 

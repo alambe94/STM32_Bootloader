@@ -32,6 +32,7 @@ public class BootLoader extends Thread {
         this.mHandler = mHandler;
     }
 
+    @Override
     public void run() {
         // Keep listening to the InputStream until an exception occurs.
         while (true) {
@@ -61,6 +62,7 @@ public class BootLoader extends Thread {
                 }
 
                 isCmdRunning = false;
+                cmdToRun = 0x00;
             }
         }
     }
@@ -71,15 +73,6 @@ public class BootLoader extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "Error occurred when sending data", e);
-        }
-    }
-
-    public void cancel() {
-        try {
-            mOutStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            Log.e(TAG, "Could not close the connect socket", e);
         }
     }
 
@@ -118,12 +111,12 @@ public class BootLoader extends Thread {
         return rx_char[0];
     }
 
-    boolean stm32ReadACK(int timeOut) {
+    private boolean stm32ReadACK(int timeOut) {
         byte reply = stm32ReadByte(timeOut);
         return reply == BootLoaderConstants.CMD_ACK;
     }
 
-    void stm32Erase() {
+    private void stm32Erase() {
 
         stm32SendCMD(BootLoaderConstants.CMD_ERASE);
 
@@ -135,7 +128,7 @@ public class BootLoader extends Thread {
 
     }
 
-    void stm32Reset() {
+    private void stm32Reset() {
 
         stm32SendCMD(BootLoaderConstants.CMD_RESET);
 
@@ -147,7 +140,7 @@ public class BootLoader extends Thread {
 
     }
 
-    void stm32Jump() {
+    private void stm32Jump() {
         stm32SendCMD(BootLoaderConstants.CMD_JUMP);
 
         if (stm32ReadACK(100)) {
@@ -157,7 +150,7 @@ public class BootLoader extends Thread {
         }
     }
 
-    void stm32ReadFlash() {
+    private void stm32ReadFlash() {
 
         long start_time = System.currentTimeMillis();
         int flashReadLen = BootLoaderConstants.STM32_FLASH_SIZE;
@@ -253,7 +246,7 @@ public class BootLoader extends Thread {
 
     }
 
-    void stm32WriteFlash() {
+    private void stm32WriteFlash() {
 
         long start_time = System.currentTimeMillis();
         int stm32AapAddress = BootLoaderConstants.STM32_FLASH_START;
@@ -267,8 +260,6 @@ public class BootLoader extends Thread {
         int blPacketIndex;
 
         int writeFileIndex = 0;
-
-        byte[] flashData = new byte[BootLoaderConstants.STM32_FLASH_SIZE];
 
         if(isWriteBinary)
         {
@@ -304,7 +295,7 @@ public class BootLoader extends Thread {
             blPacket[blPacketIndex++] = (byte) (stm32AapAddress >> 8 & 0xFF);
             blPacket[blPacketIndex++] = (byte) (stm32AapAddress & 0xFF);
 
-            System.arraycopy(flashData, writeFileIndex, blPacket, blPacketIndex, writeBlockSize);
+            System.arraycopy(writeBinary, writeFileIndex, blPacket, blPacketIndex, writeBlockSize);
             blPacketIndex += writeBlockSize;
 
             // calculate crc
@@ -346,13 +337,15 @@ public class BootLoader extends Thread {
     }
 
     public byte[] stm32GetFlashData() {
+
+        byte arr[];
         if (isReadBinary)
         {
-            byte arr[] = new byte[readBinary.length];
+            arr = new byte[readBinary.length];
             System.arraycopy(readBinary,0,arr,0,readBinary.length);
-            return readBinary;
+            return arr;
         }
-        return null;
+        return new byte[1];
     }
 
     public void stm32SetFlashData(byte[] bytes) {
@@ -370,4 +363,14 @@ public class BootLoader extends Thread {
         }
         return false;
     }
+
+    public void close() {
+        try {
+            mOutStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            Log.e(TAG, "Could not close the streamt", e);
+        }
+    }
+
 }
