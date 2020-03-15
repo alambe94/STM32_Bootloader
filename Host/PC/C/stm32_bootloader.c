@@ -146,11 +146,8 @@ uint8_t stm32_read_ack()
 {
    uint8_t rx_char;
    Serial_Port_Read(Serial_Handle, &rx_char, 1);
-   if (rx_char == CMD_ACK)
-   {
-      return 1;
-   }
-   return 0;
+
+   return (rx_char == CMD_ACK);
 }
 
 void stm32_erase()

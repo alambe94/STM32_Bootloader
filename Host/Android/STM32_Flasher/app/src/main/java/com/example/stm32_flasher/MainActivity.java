@@ -1,18 +1,13 @@
 package com.example.stm32_flasher;
 
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.text.method.ScrollingMovementMethod;
@@ -22,19 +17,16 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import java.io.BufferedWriter;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
-import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "STM32_Flasher";
-    static final UUID myUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 
     private ProgressDialog btConnectionProgress;
     private String bluetoothAddress;
@@ -45,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isGetFlash = false;
 
 
-    BootLoader bootLoaderThread;
+    Bootloader bootLoaderThread;
     private static Handler tvLogHandler;
 
     TextView tvLog;
@@ -82,9 +74,9 @@ public class MainActivity extends AppCompatActivity {
             public void handleMessage(Message msg) {
                 // msg.what == 1 message  for textbox
                 // msg.what == 2 message  for progressbar
-                if (msg.what == BootLoaderConstants.MESSAGE_LOG) {
+                if (msg.what == BootloaderConstants.MESSAGE_LOG) {
                     tvLog.append((String) msg.obj);
-                } else if (msg.what == BootLoaderConstants.MESSAGE_PROGRESS_BAR) {
+                } else if (msg.what == BootloaderConstants.MESSAGE_PROGRESS_BAR) {
                     pBar.setProgress(msg.arg1);
                 }
             }
@@ -100,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     startActivityForResult(
                             Intent.createChooser(intent, "Select a File to Upload"),
-                            BootLoaderConstants.PICK_FILE_RESULT_CODE);
+                            BootloaderConstants.PICK_FILE_RESULT_CODE);
                 } catch (android.content.ActivityNotFoundException e) {
                     e.printStackTrace();
                     Toast.makeText(getApplicationContext(), "Please install a File Manager.", Toast.LENGTH_LONG).show();
@@ -121,7 +113,7 @@ public class MainActivity extends AppCompatActivity {
                 intent.setType("application/octet-stream");
                 intent.putExtra(Intent.EXTRA_TITLE, "stm32ReadFile.bin");
 
-                startActivityForResult(intent, BootLoaderConstants.SAVE_FILE_RESULT_CODE);
+                startActivityForResult(intent, BootloaderConstants.SAVE_FILE_RESULT_CODE);
             }
 
         });
@@ -131,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
                 if (isSetFlash) {
                     tvLog.append("writing stm32 flash\n");
-                    bootLoaderThread.cmdRun(BootLoaderConstants.CMD_WRITE);
+                    bootLoaderThread.cmdRun(BootloaderConstants.CMD_WRITE);
                 } else {
                     tvLog.append("please first select the file to flash\n");
                 }
@@ -142,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 tvLog.append("reading stm32 flash\n");
-                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_READ);
+                bootLoaderThread.cmdRun(BootloaderConstants.CMD_READ);
             }
         });
 
@@ -150,7 +142,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 tvLog.append("erasing stm32\n");
-                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_ERASE);
+                bootLoaderThread.cmdRun(BootloaderConstants.CMD_ERASE);
             }
         });
 
@@ -158,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 tvLog.append("resetting mcu\n");
-                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_RESET);
+                bootLoaderThread.cmdRun(BootloaderConstants.CMD_RESET);
             }
         });
 
@@ -166,7 +158,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 tvLog.append("entering user app\n");
-                bootLoaderThread.cmdRun(BootLoaderConstants.CMD_JUMP);
+                bootLoaderThread.cmdRun(BootloaderConstants.CMD_JUMP);
             }
         });
     }
@@ -174,7 +166,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == BootLoaderConstants.PICK_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
+        if (requestCode == BootloaderConstants.PICK_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
             if (data.getData() != null && data.getData().getPath() != null) {
                 try {
                     InputStream ins = getContentResolver().openInputStream(data.getData());
@@ -188,7 +180,7 @@ public class MainActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
-        } else if (requestCode == BootLoaderConstants.SAVE_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
+        } else if (requestCode == BootloaderConstants.SAVE_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
             if (data.getData() != null && data.getData().getPath() != null) {
                 try {
                     OutputStream ots = getContentResolver().openOutputStream(data.getData());
@@ -223,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 if (!isBtConnected) {
                     BluetoothDevice BT = BluetoothAdapter.getDefaultAdapter().getRemoteDevice(bluetoothAddress);//connects to the device's address and checks if it's available
-                    btSocket = BT.createInsecureRfcommSocketToServiceRecord(myUUID);//create a RFCOMM (SPP) connection
+                    btSocket = BT.createInsecureRfcommSocketToServiceRecord(BootloaderConstants.myUUID);//create a RFCOMM (SPP) connection
                     BluetoothAdapter.getDefaultAdapter().cancelDiscovery();
                     btSocket.connect();//start connection
                 }
@@ -263,7 +255,7 @@ public class MainActivity extends AppCompatActivity {
                     Log.e(TAG, "Error occurred when creating output stream", e);
                 }
 
-                bootLoaderThread = new BootLoader(tmpIn,tmpOut,tvLogHandler);
+                bootLoaderThread = new Bootloader(tmpIn,tmpOut,tvLogHandler);
                 bootLoaderThread.start();
 
             }

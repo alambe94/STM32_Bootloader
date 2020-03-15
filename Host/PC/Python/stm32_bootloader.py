@@ -1,5 +1,4 @@
 import serial
-import struct
 import os
 import sys
 import time
@@ -7,22 +6,23 @@ import time
 
 USER_APP_ADDRESS = 0x08008000
 FLASH_SIZE = 480000 #+512000 #uncomment for 407VG
+Serial_Port = ""
 
 """
 /*
-CMD_WRITE, CMD_VERIFY Frame 
+CMD_WRITE, CMD_VERIFY Frame
 [SYNC_CHAR + frame len] frame len = 9 + payload len
 [1-byte cmd + 1-byte no of bytes to write + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC]
 */
 
-/* 
-CMD_READ Frame 
+/*
+CMD_READ Frame
 [SYNC_CHAR + frame len] frame len = 9
 [1-byte cmd + 1-byte no of bytes to read + 0x00 + 0x00 + 4-byte addes + 1-byte CRC]
 */
 
-/* 
-CMD_ERASE, CMD_RESET, CMD_JUMP Frame 
+/*
+CMD_ERASE, CMD_RESET, CMD_JUMP Frame
 [SYNC_CHAR + frame len] frame len = 2
 [1-byte cmd + 1-byte CRC]
 */
@@ -67,9 +67,9 @@ CRC8_Table = [
 
 millis = lambda: int(round(time.time() * 1000))
 
-def CRC8(data, len):
+def CRC8(data, count):
     crc = 0
-    for i in range(len):
+    for i in range(count):
         crc = CRC8_Table[crc ^ data[i]]
 
     return crc
@@ -113,7 +113,7 @@ def stm32_erase():
     stm32_bl_send_cmd(CMD_ERASE)
 
     print("erasing", end='')
-    
+
     for i in range(10):
         print(".", end='')
         time.sleep(0.01)
@@ -123,7 +123,7 @@ def stm32_erase():
     else:
         print("flash erase error")
 
-    Serial_Port.timeout = 1    
+    Serial_Port.timeout = 1
 
 
 def stm32_get_help():
@@ -155,7 +155,7 @@ def stm32_jump():
 
 
 def stm32_read_flash():
-    
+
     start = millis()
     read_block_size = 240
     remaining_bytes = FLASH_SIZE
@@ -172,7 +172,7 @@ def stm32_read_flash():
 
         # assemble cmd
         bl_packet += int_to_bytes(CMD_READ)
-        
+
         # no char to receive from stm32
         bl_packet += int_to_bytes(read_block_size)
 
@@ -188,16 +188,16 @@ def stm32_read_flash():
 
         # calculate crc
         crc = CRC8(bl_packet, 8)
-        
+
         # assemble crc
         bl_packet += int_to_bytes(crc)
 
         # send sync char
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
-        
+
         # send no chars in bl_packet
         Serial_Port.write(int_to_bytes(9))  # total bytes in bl_packet
-        
+
         # send bl_packet
         Serial_Port.write(bl_packet)
 
@@ -237,18 +237,18 @@ def stm32_read_flash():
 
             except(OSError):
                 print("can not open " + "read_file.bin")
-                
+
             elapsed_time = millis() - start
             print("elapsed time = {}ms".format(int(elapsed_time)))
-            print("read speed = {}kB/S".format(int(file_size/elapsed_time)))     
-                
-       
+            print("read speed = {}kB/S".format(int(file_size/elapsed_time)))
+
+
 
 
 def stm32_write(bin_file):
-    
+
     start = millis()
-    
+
     remaining_bytes = 0
     f_file_exist = False
     f_file_size = 0
@@ -278,17 +278,17 @@ def stm32_write(bin_file):
 
         # no char to flash to stm32
         bl_packet += int_to_bytes(write_block_size)
-        
+
         # 2 bytes padding for stm32 word alignment
         bl_packet += int_to_bytes(0x00)
         bl_packet += int_to_bytes(0x00)
-        
+
         # assemble address
         bl_packet += int_to_bytes(stm32_app_address >> 24 & 0xFF)
         bl_packet += int_to_bytes(stm32_app_address >> 16 & 0xFF)
         bl_packet += int_to_bytes(stm32_app_address >> 8 & 0xFF)
         bl_packet += int_to_bytes(stm32_app_address >> 0 & 0xFF)
-                
+
         # assemble payload
         for x in range(write_block_size):
             bl_packet += bin_file_data.read(1)
@@ -298,13 +298,13 @@ def stm32_write(bin_file):
 
         # assemble crc
         bl_packet += int_to_bytes(crc)
-                        
+
         # send sync char
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
-        
+
         # send no char in bl_packet
         Serial_Port.write(int_to_bytes(write_block_size + 9))
-        
+
         # send bl_packet
         Serial_Port.write(bl_packet)
 
@@ -327,12 +327,12 @@ def stm32_write(bin_file):
     if(f_file_exist):
         bin_file_data.close()
         print("closing file")
-    
+
 
 def stm32_verify(bin_file):
-    
+
     start = millis()
-    
+
     remaining_bytes = 0
     f_file_exist = False
     f_file_size = 0
@@ -362,17 +362,17 @@ def stm32_verify(bin_file):
 
         # no char to flash to stm32
         bl_packet += int_to_bytes(write_block_size)
-        
+
         # 2 bytes padding for stm32 word alignment
         bl_packet += int_to_bytes(0x00)
         bl_packet += int_to_bytes(0x00)
-        
+
         # assemble address
         bl_packet += int_to_bytes(stm32_app_address >> 24 & 0xFF)
         bl_packet += int_to_bytes(stm32_app_address >> 16 & 0xFF)
         bl_packet += int_to_bytes(stm32_app_address >> 8 & 0xFF)
         bl_packet += int_to_bytes(stm32_app_address >> 0 & 0xFF)
-                
+
         # assemble payload
         for x in range(write_block_size):
             bl_packet += bin_file_data.read(1)
@@ -382,13 +382,13 @@ def stm32_verify(bin_file):
 
         # assemble crc
         bl_packet += int_to_bytes(crc)
-                        
+
         # send sync char
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
-        
+
         # send no char in bl_packet
         Serial_Port.write(int_to_bytes(write_block_size + 9))
-        
+
         # send bl_packet
         Serial_Port.write(bl_packet)
 
@@ -420,11 +420,11 @@ def main():
     print(sys.argv)
 
     if len(sys.argv) >= 4:
-        
+
         port = sys.argv[1]
         baud = int(sys.argv[2])
         cmd  = sys.argv[3]
-        
+
         try:
             Serial_Port = serial.Serial(port, baud, timeout=1)
             ser_open = True
@@ -461,7 +461,7 @@ def main():
                 print("please enter input file to verfy")
         else:
             print("invalid cmd")
-            
+
         Serial_Port.close()
 
     else:
@@ -469,5 +469,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main() 
-   
+    main()
+

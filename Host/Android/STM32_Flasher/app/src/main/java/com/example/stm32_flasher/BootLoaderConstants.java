@@ -1,6 +1,8 @@
 package com.example.stm32_flasher;
 
-public final class BootLoaderConstants {
+import java.util.UUID;
+
+public final class BootloaderConstants {
 
     public static final int STM32_FLASH_START = 0x08008000;
     public static final int STM32_FLASH_SIZE = 480000;
@@ -26,4 +28,7 @@ public final class BootLoaderConstants {
 
     public static final int PICK_FILE_RESULT_CODE = 15;
     public static final int SAVE_FILE_RESULT_CODE = 16;
+
+    public static final UUID myUUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
+
 }
