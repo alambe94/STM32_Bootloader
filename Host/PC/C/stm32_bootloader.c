@@ -332,7 +332,6 @@ void stm32_write(char *input_file)
 
    uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-   uint32_t f_file_size;
 
    uint8_t write_block_size = 240;
    uint8_t bl_packet[256];
@@ -348,7 +347,7 @@ void stm32_write(char *input_file)
    else
    {
       fseek(fp, 0L, SEEK_END);
-      f_file_size = ftell(fp);
+      uint32_t f_file_size = ftell(fp);
       rewind(fp);
       printf("file size %u\n", f_file_size);
       uint32_t remaining_bytes = f_file_size;
@@ -437,12 +436,8 @@ void stm32_verify(char *input_file)
 
    uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-   uint32_t f_file_size;
 
-   uint8_t write_block_size = 240;
    uint8_t bl_packet[256];
-   uint8_t bl_packet_index = 0;
-   uint8_t temp[1] = {0};
 
    printf("opening file...\n");
 
@@ -455,13 +450,18 @@ void stm32_verify(char *input_file)
    else
    {
       fseek(fp, 0L, SEEK_END);
-      f_file_size = ftell(fp);
+      uint32_t f_file_size = ftell(fp);
       rewind(fp);
       printf("file size %u\n", f_file_size);
       uint32_t remaining_bytes = f_file_size;
+      uint8_t write_block_size = 240;
 
       while (remaining_bytes > 0)
       {
+
+         uint8_t bl_packet_index;
+         uint8_t temp[1];
+
          if (remaining_bytes < write_block_size)
          {
             write_block_size = remaining_bytes;
@@ -559,7 +559,7 @@ int main(int argc, char *argv[])
    {
       printf("port open success\n");
 
-      if (strncmp(cmd, "write", strlen("write")) == 0)
+      if (strncmp(cmd, "write", 5) == 0)
       {
          if (argc >= 5)
          {
