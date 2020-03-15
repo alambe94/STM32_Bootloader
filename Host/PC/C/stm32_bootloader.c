@@ -9,20 +9,20 @@
 #define USER_APP_ADDRESS 0x08008000
 #define FLASH_SIZE 480000 //+ 512000 //uncomment for 407VG
 
-/* 
-CMD_WRITE, CMD_VERIFY Frame 
+/*
+CMD_WRITE, CMD_VERIFY Frame
 [SYNC_CHAR + frame len] frame len = 9 + payload len
 [1-byte cmd + 1-byte no of bytes to write + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC]
 */
 
-/* 
-CMD_READ Frame 
+/*
+CMD_READ Frame
 [SYNC_CHAR + frame len] frame len = 9
 [1-byte cmd + 1-byte no of bytes to read + 0x00 + 0x00 + 4-byte addes + 1-byte CRC]
 */
 
-/* 
-CMD_ERASE, CMD_RESET, CMD_JUMP Frame 
+/*
+CMD_ERASE, CMD_RESET, CMD_JUMP Frame
 [SYNC_CHAR + frame len] frame len = 2
 [1-byte cmd + 1-byte CRC]
 */
@@ -220,9 +220,7 @@ void stm32_read_flash()
 
    uint8_t bl_packet[10];
    uint8_t rx_buffer[256];
-   uint8_t bl_packet_index;
    uint8_t read_block_size = 240;
-   uint8_t temp[1] = {0};
 
    fp = fopen("output_file.bin", "wb");
 
@@ -235,10 +233,14 @@ void stm32_read_flash()
    while (remaining_bytes > 0)
    {
 
+      uint8_t bl_packet_index;
+      uint8_t temp[1];
+
       if (remaining_bytes < read_block_size)
       {
          read_block_size = remaining_bytes;
       }
+
       memset(bl_packet, 0x00, 10);
       memset(rx_buffer, 0x00, 256);
 
@@ -296,13 +298,11 @@ void stm32_read_flash()
             printf("flash read succsess at 0X%0x\n", stm32_app_address);
             remaining_bytes -= read_block_size;
             stm32_app_address += read_block_size;
-            printf("remaining bytes: %i\n", remaining_bytes);
+            printf("remaining bytes: %lu\n", remaining_bytes);
          }
          else
          {
             printf("crc mismatch\n");
-            printf("crc_recvd %i\n", crc_recvd);
-            printf("crc_calc %i\n", crc_calc);
          }
       }
       else
@@ -319,8 +319,8 @@ void stm32_read_flash()
       fseek(fp, 0L, SEEK_END);
       uint32_t f_file_size = ftell(fp);
       uint32_t elapsed_time = system_current_time_millis() - start_time;
-      printf("elapsed time = %ims\n", elapsed_time);
-      printf("read speed = %ikB/S\n", f_file_size / elapsed_time);
+      printf("elapsed time = %lums\n", elapsed_time);
+      printf("read speed = %lukB/S\n", f_file_size / elapsed_time);
    }
 
    fclose(fp);
@@ -332,13 +332,10 @@ void stm32_write(char *input_file)
 
    uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-   uint32_t remaining_bytes;
    uint32_t f_file_size;
 
    uint8_t write_block_size = 240;
    uint8_t bl_packet[256];
-   uint8_t bl_packet_index = 0;
-   uint8_t temp[1] = {0};
 
    printf("opening file...\n");
 
@@ -351,13 +348,16 @@ void stm32_write(char *input_file)
    else
    {
       fseek(fp, 0L, SEEK_END);
-      remaining_bytes = ftell(fp);
+      f_file_size = ftell(fp);
       rewind(fp);
-      printf("file size %i\n", remaining_bytes);
-      f_file_size = remaining_bytes;
+      printf("file size %lu\n", f_file_size);
+      uint32_t remaining_bytes = f_file_size;
 
       while (remaining_bytes > 0)
       {
+         uint8_t bl_packet_index;
+         uint8_t temp[1];
+
          if (remaining_bytes < write_block_size)
          {
             write_block_size = remaining_bytes;
@@ -415,15 +415,15 @@ void stm32_write(char *input_file)
 
          remaining_bytes -= write_block_size;
          stm32_app_address += write_block_size;
-         printf("remaining bytes: %i\n", remaining_bytes);
+         printf("remaining bytes: %lu\n", remaining_bytes);
       }
 
       if (remaining_bytes == 0)
       {
          printf("flash write successfull, jolly good!!!!\n");
          uint32_t elapsed_time = system_current_time_millis() - start_time;
-         printf("elapsed time = %ims\n", elapsed_time);
-         printf("write speed = %ikB/S\n", f_file_size / elapsed_time);
+         printf("elapsed time = %lums\n", elapsed_time);
+         printf("write speed = %lukB/S\n", f_file_size / elapsed_time);
       }
 
       fclose(fp);
@@ -437,7 +437,6 @@ void stm32_verify(char *input_file)
 
    uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
-   uint32_t remaining_bytes;
    uint32_t f_file_size;
 
    uint8_t write_block_size = 240;
@@ -456,10 +455,10 @@ void stm32_verify(char *input_file)
    else
    {
       fseek(fp, 0L, SEEK_END);
-      remaining_bytes = ftell(fp);
+      f_file_size = ftell(fp);
       rewind(fp);
-      printf("file size %i\n", remaining_bytes);
-      f_file_size = remaining_bytes;
+      printf("file size %lu\n", f_file_size);
+      uint32_t remaining_bytes = f_file_size;
 
       while (remaining_bytes > 0)
       {
@@ -520,15 +519,15 @@ void stm32_verify(char *input_file)
 
          remaining_bytes -= write_block_size;
          stm32_app_address += write_block_size;
-         printf("remaining bytes: %i\n", remaining_bytes);
+         printf("remaining bytes: %lu\n", remaining_bytes);
       }
 
       if (remaining_bytes == 0)
       {
          printf("verify successfull, jolly good!!!!\n");
          uint32_t elapsed_time = system_current_time_millis() - start_time;
-         printf("elapsed time = %ims\n", elapsed_time);
-         printf("verify speed = %ikB/S\n", f_file_size / elapsed_time);
+         printf("elapsed time = %lums\n", elapsed_time);
+         printf("verify speed = %lukB/S\n", f_file_size / elapsed_time);
       }
 
       fclose(fp);
