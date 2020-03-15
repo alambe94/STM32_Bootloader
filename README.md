@@ -1,0 +1,2 @@
+# STM32_Bootloader
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/295aabaeb5d842d08b2e143249469f82)](https://app.codacy.com/manual/alambe94/STM32_Bootloader?utm_source=github.com&utm_medium=referral&utm_content=alambe94/STM32_Bootloader&utm_campaign=Badge_Grade_Dashboard)
