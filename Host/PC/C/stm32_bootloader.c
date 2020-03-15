@@ -298,7 +298,7 @@ void stm32_read_flash()
             printf("flash read succsess at 0X%0x\n", stm32_app_address);
             remaining_bytes -= read_block_size;
             stm32_app_address += read_block_size;
-            printf("remaining bytes: %lu\n", remaining_bytes);
+            printf("remaining bytes: %u\n", remaining_bytes);
          }
          else
          {
@@ -319,8 +319,8 @@ void stm32_read_flash()
       fseek(fp, 0L, SEEK_END);
       uint32_t f_file_size = ftell(fp);
       uint32_t elapsed_time = system_current_time_millis() - start_time;
-      printf("elapsed time = %lums\n", elapsed_time);
-      printf("read speed = %lukB/S\n", f_file_size / elapsed_time);
+      printf("elapsed time = %ums\n", elapsed_time);
+      printf("read speed = %ukB/S\n", f_file_size / elapsed_time);
    }
 
    fclose(fp);
@@ -350,7 +350,7 @@ void stm32_write(char *input_file)
       fseek(fp, 0L, SEEK_END);
       f_file_size = ftell(fp);
       rewind(fp);
-      printf("file size %lu\n", f_file_size);
+      printf("file size %u\n", f_file_size);
       uint32_t remaining_bytes = f_file_size;
 
       while (remaining_bytes > 0)
@@ -415,15 +415,15 @@ void stm32_write(char *input_file)
 
          remaining_bytes -= write_block_size;
          stm32_app_address += write_block_size;
-         printf("remaining bytes: %lu\n", remaining_bytes);
+         printf("remaining bytes: %u\n", remaining_bytes);
       }
 
       if (remaining_bytes == 0)
       {
          printf("flash write successfull, jolly good!!!!\n");
          uint32_t elapsed_time = system_current_time_millis() - start_time;
-         printf("elapsed time = %lums\n", elapsed_time);
-         printf("write speed = %lukB/S\n", f_file_size / elapsed_time);
+         printf("elapsed time = %ums\n", elapsed_time);
+         printf("write speed = %ukB/S\n", f_file_size / elapsed_time);
       }
 
       fclose(fp);
@@ -457,7 +457,7 @@ void stm32_verify(char *input_file)
       fseek(fp, 0L, SEEK_END);
       f_file_size = ftell(fp);
       rewind(fp);
-      printf("file size %lu\n", f_file_size);
+      printf("file size %u\n", f_file_size);
       uint32_t remaining_bytes = f_file_size;
 
       while (remaining_bytes > 0)
@@ -519,15 +519,15 @@ void stm32_verify(char *input_file)
 
          remaining_bytes -= write_block_size;
          stm32_app_address += write_block_size;
-         printf("remaining bytes: %lu\n", remaining_bytes);
+         printf("remaining bytes: %u\n", remaining_bytes);
       }
 
       if (remaining_bytes == 0)
       {
          printf("verify successfull, jolly good!!!!\n");
          uint32_t elapsed_time = system_current_time_millis() - start_time;
-         printf("elapsed time = %lums\n", elapsed_time);
-         printf("verify speed = %lukB/S\n", f_file_size / elapsed_time);
+         printf("elapsed time = %ums\n", elapsed_time);
+         printf("verify speed = %ukB/S\n", f_file_size / elapsed_time);
       }
 
       fclose(fp);
@@ -551,7 +551,7 @@ int main(int argc, char *argv[])
       cmd = argv[3];
 
       printf("com port = %s\n", com_port);
-      printf("baud rate = %i\n", baud_rate);
+      printf("baud rate = %u\n", baud_rate);
       printf("cmd = %s\n", cmd);
    }
 
@@ -572,27 +572,27 @@ int main(int argc, char *argv[])
             printf("please enter input file\n");
          }
       }
-      else if (strncmp(cmd, "erase", strlen("erase")) == 0)
+      else if (strncmp(cmd, "erase", 5) == 0)
       {
          stm32_erase();
       }
-      else if (strncmp(cmd, "reset", strlen("reset")) == 0)
+      else if (strncmp(cmd, "reset", 5) == 0)
       {
          stm32_reset();
       }
-      else if (strncmp(cmd, "jump", strlen("jump")) == 0)
+      else if (strncmp(cmd, "jump", 4) == 0)
       {
          stm32_jump();
       }
-      else if (strncmp(cmd, "help", strlen("help")) == 0)
+      else if (strncmp(cmd, "help", 4) == 0)
       {
          stm32_get_help();
       }
-      else if (strncmp(cmd, "read", strlen("read")) == 0)
+      else if (strncmp(cmd, "read", 4) == 0)
       {
          stm32_read_flash();
       }
-      else if (strncmp(cmd, "verify", strlen("verify")) == 0)
+      else if (strncmp(cmd, "verify", 5) == 0)
       {
          if (argc >= 5)
          {
