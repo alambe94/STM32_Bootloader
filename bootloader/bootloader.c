@@ -87,38 +87,42 @@ UART_HandleTypeDef *BL_UART = &huart6;
 /*
 CMD_WRITE, CMD_VERIFY Frame
 [SYNC_CHAR + frame len] frame len = 9 + payload len
-[1-byte cmd + 1-byte no of bytes to write + 0x00 + 0x00 + 4-byte addes +  payload + 1-byte CRC]
+[1-byte cmd + 1-byte no of bytes to write + 0x00 + 0x00 + 4-byte address +  payload + 1-byte CRC]
 */
 
 /*
 CMD_READ Frame
 [SYNC_CHAR + frame len] frame len = 9
-[1-byte cmd + 1-byte no of bytes to read + 0x00 + 0x00 + 4-byte addes + 1-byte CRC]
+[1-byte cmd + 1-byte no of bytes to read + 0x00 + 0x00 + 4-byte address + 1-byte CRC]
 */
 
 /*
-CMD_ERASE, CMD_RESET, CMD_JUMP Frame
+CMD_ERASE, CMD_RESET, CMD_JUMP, CMD_GETVER Frame
 [SYNC_CHAR + frame len] frame len = 2
 [1-byte cmd + 1-byte CRC]
 */
 
-#define BL_CMD_WRITE 0x50
-#define BL_CMD_READ 0x51
-#define BL_CMD_ERASE 0x52
-#define BL_CMD_RESET 0x53
-#define BL_CMD_JUMP 0x54
+#define BL_CMD_WRITE  0x50
+#define BL_CMD_READ   0x51
+#define BL_CMD_ERASE  0x52
+#define BL_CMD_RESET  0x53
+#define BL_CMD_JUMP   0x54
 #define BL_CMD_VERIFY 0x55
+#define BL_CMD_GETVER 0x56
 
-#define BL_CMD_ACK 0x90
-#define BL_CMD_NACK 0x91
-#define BL_CMD_ERROR 0x92
+#define BL_CMD_ACK    0x90
+#define BL_CMD_NACK   0x91
+#define BL_CMD_ERROR  0x92
 
-#define BL_CMD_HELP 0x40
+#define BL_SYNC_CHAR  '$'
 
-#define BL_SYNC_CHAR '$'
 
 #define BL_RX_BUFFER_SIZE (256)
 #define BL_TX_BUFFER_SIZE (256)
+
+/* bootloader version number */
+/* majar, minor, build  0.1.2*/
+uint8_t BL_Version[3] = {0,1,2};
 
 uint8_t BL_RX_Buffer[BL_RX_BUFFER_SIZE];
 uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
@@ -373,6 +377,22 @@ void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t len)
 
     }
 
+void BL_Get_Version_Callback()
+    {
+
+    uint8_t crc;
+
+    BL_UART_Send_Char(BL_CMD_ACK);
+
+    crc = BL_CRC8(BL_Version, 3);
+
+    BL_UART_Send_Char(BL_Version[0]);
+    BL_UART_Send_Char(BL_Version[1]);
+    BL_UART_Send_Char(BL_Version[2]);
+    BL_UART_Send_Char(crc);
+
+    }
+
 void BL_Loop()
     {
 
@@ -452,6 +472,11 @@ void BL_Loop()
 				break;
 
 			    case BL_CMD_VERIFY:
+				BL_Verify_Callback(address, (BL_RX_Buffer + 8),
+					len);
+				break;
+
+			    case BL_CMD_GETVER:
 				BL_Verify_Callback(address, (BL_RX_Buffer + 8),
 					len);
 				break;
