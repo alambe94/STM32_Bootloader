@@ -6,7 +6,13 @@
     </shared>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="c76ab1d2-2474-4e92-8904-d2607d1d1925" name="Default Changelist" comment="" />
+    <list default="true" id="c76ab1d2-2474-4e92-8904-d2607d1d1925" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/.cproject" beforeDir="false" afterPath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/.cproject" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/BL_STM32F103RE.ioc" beforeDir="false" afterPath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/BL_STM32F103RE.ioc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/Core/Inc/main.h" beforeDir="false" afterPath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/Core/Inc/main.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/Core/Src/gpio.c" beforeDir="false" afterPath="$PROJECT_DIR$/../../../MCU/STM32F103RE/Bootloader/Core/Src/gpio.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../MCU/STM32F401RE/Bootloader/.cproject" beforeDir="false" afterPath="$PROJECT_DIR$/../../../MCU/STM32F401RE/Bootloader/.cproject" afterDir="false" />
+    </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />

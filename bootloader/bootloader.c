@@ -213,9 +213,8 @@ void BL_UART_Send_String(char *data)
 
 void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t len)
     {
-
+    uint32_t *sram_ptr = (uint32_t*)data;
     uint8_t status = 1;
-    uint32_t *aligned_data = (uint32_t*) data;
     len /= 4;
 
     if (address >= USER_FLASH_START_ADDRESS
@@ -228,19 +227,16 @@ void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t len)
 	for (uint32_t i = 0; i < len; i++)
 	    {
 
-	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address,
-		    *aligned_data) == HAL_OK)
+	    if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, *sram_ptr) == HAL_OK)
 		{
 		/* Check the written value */
-		if (*(uint32_t*) address != *aligned_data)
+		if (*(uint32_t*) address != *sram_ptr++)
 		    {
 		    /* Flash content doesn't match SRAM content */
 		    status = 0;
 		    break;
 		    }
-		/* Increment FLASH destination address */
 		address += 4;
-		aligned_data++;
 		}
 	    else
 		{
@@ -343,8 +339,8 @@ void BL_Jump_Callback()
 void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t len)
     {
 
-    uint8_t *add_ptr = (uint8_t*) address;
     uint8_t ok_flag = 1;
+    len /= 4;
 
     if (address >= USER_FLASH_START_ADDRESS
 	    && address <= USER_FLASH_END_ADDRESS - len)
@@ -352,11 +348,15 @@ void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t len)
 
 	for (uint8_t i = 0; i < len; i++)
 	    {
-	    if (data[i] != add_ptr[i])
+	    if (*(uint32_t*) address != *(uint32_t*) data)
 		{
 		ok_flag = 0;
 		break;
 		}
+
+	    address += 4;
+	    data += 4;
+
 	    }
 
 	}
@@ -477,8 +477,7 @@ void BL_Loop()
 				break;
 
 			    case BL_CMD_GETVER:
-				BL_Verify_Callback(address, (BL_RX_Buffer + 8),
-					len);
+				BL_Get_Version_Callback();
 				break;
 
 			    default:
@@ -499,7 +498,7 @@ void BL_Main()
     HAL_Delay(1);
 
     /* if pin is reset enter bootloader*/
-    //if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
+    if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
 	{
 	BL_Loop();
 	}

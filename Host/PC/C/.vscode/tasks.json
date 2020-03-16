@@ -1,21 +1,26 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558 
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
     // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "echo",
             "type": "shell",
-            "label": "gcc.exe build active file",
-            "command": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-posix-seh-rt_v6-rev0\\mingw64\\bin\\gcc.exe",
+            "command": "echo Hello"
+        },
+        {
+            "type": "shell",
+            "label": "gcc-7 build active file",
+            "command": "/usr/bin/gcc-7",
             "args": [
                 "-g",
-                "${fileDirname}\\stm32_bootloader.c",
-                "${fileDirname}\\serial_port.c",
+                "${fileDirname}/stm32_bootloader.c",
+                "${fileDirname}/serial_port.c",
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "${fileDirname}/${fileBasenameNoExtension}"
             ],
             "options": {
-                "cwd": "C:\\Program Files\\mingw-w64\\x86_64-8.1.0-posix-seh-rt_v6-rev0\\mingw64\\bin"
+                "cwd": "/usr/bin"
             },
             "problemMatcher": [
                 "$gcc"

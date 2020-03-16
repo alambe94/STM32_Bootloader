@@ -111,10 +111,10 @@ public class Bootloader extends Thread {
             {
                 if(mInStream.available() > 0)
                 {
+                    mInStream.read(rx_char, 0, 1);
                     break;
                 }
             }
-            mInStream.read(rx_char, 0, 1);
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "read failed", e);
@@ -144,7 +144,7 @@ public class Bootloader extends Thread {
 
         stm32SendCMD(BootloaderConstants.CMD_RESET);
 
-        if (stm32ReadACK(100)) {
+        if (stm32ReadACK(500)) {
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "MCU reset success\n").sendToTarget();
         } else {
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"MCU reset failed\n").sendToTarget();
@@ -155,7 +155,7 @@ public class Bootloader extends Thread {
     private void stm32Jump() {
         stm32SendCMD(BootloaderConstants.CMD_JUMP);
 
-        if (stm32ReadACK(100)) {
+        if (stm32ReadACK(500)) {
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"MCU jump success\n").sendToTarget();
         } else {
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"MCU jump failed\n").sendToTarget();
@@ -220,7 +220,7 @@ public class Bootloader extends Thread {
             // send blPacket
             write(blPacket);
 
-            if (stm32ReadACK(100)) {
+            if (stm32ReadACK(500)) {
 
                 for (int i = 0; i < readBlockSize; i++) {
                     rxBuffer[i] = stm32ReadByte(100);
@@ -332,7 +332,7 @@ public class Bootloader extends Thread {
             bytesRemaining -= writeBlockSize;
             stm32AapAddress += writeBlockSize;
 
-            if (stm32ReadACK(100)) {
+            if (stm32ReadACK(500)) {
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (bytesRemaining * 100) / totalLen, -1).sendToTarget();
             } else {
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"write flash error at " + stm32AapAddress + "\n").sendToTarget();
@@ -424,7 +424,7 @@ public class Bootloader extends Thread {
             bytesRemaining -= writeBlockSize;
             stm32AapAddress += writeBlockSize;
 
-            if (stm32ReadACK(100)) {
+            if (stm32ReadACK(500)) {
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (bytesRemaining * 100) / totalLen, -1).sendToTarget();
             } else {
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"verify flash error at " + stm32AapAddress + "\n").sendToTarget();

@@ -559,7 +559,7 @@ int main(int argc, char *argv[])
    {
       printf("port open success\n");
 
-      if (strncmp(cmd, "write", 5) == 0)
+      if (strncmp(cmd, "write", strlen("write")) == 0)
       {
          if (argc >= 5)
          {
@@ -572,27 +572,27 @@ int main(int argc, char *argv[])
             printf("please enter input file\n");
          }
       }
-      else if (strncmp(cmd, "erase", 5) == 0)
+      else if (strncmp(cmd, "erase", strlen("erase")) == 0)
       {
          stm32_erase();
       }
-      else if (strncmp(cmd, "reset", 5) == 0)
+      else if (strncmp(cmd, "reset", strlen("reset")) == 0)
       {
          stm32_reset();
       }
-      else if (strncmp(cmd, "jump", 4) == 0)
+      else if (strncmp(cmd, "jump", strlen("jump")) == 0)
       {
          stm32_jump();
       }
-      else if (strncmp(cmd, "help", 4) == 0)
+      else if (strncmp(cmd, "help", strlen("help")) == 0)
       {
          stm32_get_help();
       }
-      else if (strncmp(cmd, "read", 4) == 0)
+      else if (strncmp(cmd, "read", strlen("read")) == 0)
       {
          stm32_read_flash();
       }
-      else if (strncmp(cmd, "verify", 5) == 0)
+      else if (strncmp(cmd, "verify", strlen("verify")) == 0)
       {
          if (argc >= 5)
          {
