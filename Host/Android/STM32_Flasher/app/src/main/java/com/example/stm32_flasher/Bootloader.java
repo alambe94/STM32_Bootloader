@@ -442,7 +442,7 @@ public class Bootloader extends Thread {
         }
     }
 
-    byte[] stm32GetFlashData() {
+    public byte[] stm32GetFlashData() {
 
         byte[] arr;
         if (isReadBinary)
@@ -454,7 +454,7 @@ public class Bootloader extends Thread {
         return new byte[1];
     }
 
-    void stm32SetFlashData(byte[] bytes) {
+    public void stm32SetFlashData(byte[] bytes) {
 
         writeBinary = new byte[bytes.length];
         System.arraycopy(bytes, 0, writeBinary, 0, bytes.length);
@@ -462,7 +462,7 @@ public class Bootloader extends Thread {
 
     }
 
-    boolean cmdRun(byte cmd) {
+    public boolean cmdRun(byte cmd) {
         if (!isCmdRunning) {
             isCmdRunning = true;
             cmdToRun = cmd;

@@ -37,11 +37,11 @@ public class MainActivity extends AppCompatActivity {
     private boolean isGetFlash = false;
 
 
-    Bootloader bootLoaderThread;
+    private Bootloader bootLoaderThread;
     private static Handler tvLogHandler;
 
-    TextView tvLog;
-    ProgressBar pBar;
+    private TextView tvLog;
+    private ProgressBar pBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
