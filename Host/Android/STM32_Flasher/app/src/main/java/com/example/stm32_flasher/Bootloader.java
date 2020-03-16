@@ -124,6 +124,7 @@ public class Bootloader extends Thread {
     private boolean stm32ReadACK(int timeOut) {
         byte reply = stm32ReadByte(timeOut);
         return reply == BootloaderConstants.CMD_ACK;
+
     }
 
     private void stm32Erase() {
@@ -242,6 +243,7 @@ public class Bootloader extends Thread {
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "flash read error at 0x" + Integer.toHexString(stm32AapAddress) + "\n").sendToTarget();
                 break;
             }
+
         }
 
         if (remainingBytes == 0) {
@@ -323,16 +325,16 @@ public class Bootloader extends Thread {
             write(blPacket, blPacketIndex);
 
 
-            writeFileIndex += writeBlockSize;
-            remainingBytes -= writeBlockSize;
-            stm32AapAddress += writeBlockSize;
-
             if (stm32ReadACK(500)) {
+                writeFileIndex += writeBlockSize;
+                remainingBytes -= writeBlockSize;
+                stm32AapAddress += writeBlockSize;
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (remainingBytes * 100) / totalLen, -1).sendToTarget();
             } else {
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "write flash error at 0x" + Integer.toHexString(stm32AapAddress) + "\n").sendToTarget();
                 break;
             }
+
         }
 
         if (remainingBytes == 0) {
@@ -411,17 +413,16 @@ public class Bootloader extends Thread {
             // send blPacket
             write(blPacket, blPacketIndex);
 
-
-            writeFileIndex += writeBlockSize;
-            remainingBytes -= writeBlockSize;
-            stm32AapAddress += writeBlockSize;
-
             if (stm32ReadACK(500)) {
+                writeFileIndex += writeBlockSize;
+                remainingBytes -= writeBlockSize;
+                stm32AapAddress += writeBlockSize;
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (remainingBytes * 100) / totalLen, -1).sendToTarget();
             } else {
                 mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "verify flash error at 0x" + Integer.toHexString(stm32AapAddress) + "\n").sendToTarget();
                 break;
             }
+
         }
 
         if (remainingBytes == 0) {

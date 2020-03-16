@@ -7,11 +7,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c76ab1d2-2474-4e92-8904-d2607d1d1925" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/../../PC/C/output_file.bin" beforeDir="false" afterPath="$PROJECT_DIR$/../../PC/C/output_file.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../PC/C/stm32_bootloader.c" beforeDir="false" afterPath="$PROJECT_DIR$/../../PC/C/stm32_bootloader.c" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../PC/Python/read_file.bin" beforeDir="false" afterPath="$PROJECT_DIR$/../../PC/Python/read_file.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../PC/Python/stm32_bootloader.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../PC/Python/stm32_bootloader.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../../../bootloader/bootloader.c" beforeDir="false" afterPath="$PROJECT_DIR$/../../../bootloader/bootloader.c" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/Bootloader.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/Bootloader.java" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
