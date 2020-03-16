@@ -104,16 +104,24 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btSaveFile).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
 
-                // filter to only show openable items.
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
+                if(isGetFlash)
+                {
+                    Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
 
-                // Create a file with the requested Mime type
-                intent.setType("application/octet-stream");
-                intent.putExtra(Intent.EXTRA_TITLE, "stm32ReadFile.bin");
+                    // filter to only show openable items.
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
 
-                startActivityForResult(intent, BootloaderConstants.SAVE_FILE_RESULT_CODE);
+                    // Create a file with the requested Mime type
+                    intent.setType("application/octet-stream");
+                    intent.putExtra(Intent.EXTRA_TITLE, "stm32ReadFile.bin");
+
+                    startActivityForResult(intent, BootloaderConstants.SAVE_FILE_RESULT_CODE);
+                }
+                else {
+                    tvLog.append("please read stm32 flash first\n");
+                }
+
             }
 
         });
@@ -122,10 +130,34 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (isSetFlash) {
-                    tvLog.append("writing stm32 flash\n");
-                    bootLoaderThread.cmdRun(BootloaderConstants.CMD_WRITE);
+                    if(bootLoaderThread.cmdRun(BootloaderConstants.CMD_WRITE))
+                    {
+                        tvLog.append("writing stm32 flash\n");
+
+                    }
+                    else {
+                        tvLog.append("busy\n");
+                    }
                 } else {
                     tvLog.append("please first select the file to flash\n");
+                }
+            }
+        });
+
+        findViewById(R.id.btVerify).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (isSetFlash) {
+                    if(bootLoaderThread.cmdRun(BootloaderConstants.CMD_VERIFY))
+                    {
+                        tvLog.append("verifying stm32 flash\n");
+
+                    }
+                    else {
+                        tvLog.append("busy\n");
+                    }
+                } else {
+                    tvLog.append("please first select the file to verify\n");
                 }
             }
         });
@@ -133,32 +165,57 @@ public class MainActivity extends AppCompatActivity {
         findViewById(R.id.btReadFile).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                tvLog.append("reading stm32 flash\n");
-                bootLoaderThread.cmdRun(BootloaderConstants.CMD_READ);
+                if(bootLoaderThread.cmdRun(BootloaderConstants.CMD_READ))
+                {
+                    tvLog.append("reading stm32 flash\n");
+
+                }
+                else {
+                    tvLog.append("busy\n");
+                }
+                isGetFlash = true;
             }
         });
 
         findViewById(R.id.btEraseMcu).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                tvLog.append("erasing stm32\n");
-                bootLoaderThread.cmdRun(BootloaderConstants.CMD_ERASE);
+                if(bootLoaderThread.cmdRun(BootloaderConstants.CMD_ERASE))
+                {
+                    tvLog.append("erasing stm32\n");
+
+                }
+                else {
+                    tvLog.append("busy\n");
+                }
             }
         });
 
         findViewById(R.id.btResetMcu).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                tvLog.append("resetting mcu\n");
-                bootLoaderThread.cmdRun(BootloaderConstants.CMD_RESET);
+                if(bootLoaderThread.cmdRun(BootloaderConstants.CMD_RESET))
+                {
+                    tvLog.append("resetting mcu\n");
+
+                }
+                else {
+                    tvLog.append("busy\n");
+                }
             }
         });
 
         findViewById(R.id.btJumpMcu).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                tvLog.append("entering user app\n");
-                bootLoaderThread.cmdRun(BootloaderConstants.CMD_JUMP);
+                if(bootLoaderThread.cmdRun(BootloaderConstants.CMD_JUMP))
+                {
+                    tvLog.append("entering user app\n");
+
+                }
+                else {
+                    tvLog.append("busy\n");
+                }
             }
         });
     }
@@ -174,6 +231,7 @@ public class MainActivity extends AppCompatActivity {
                         byte[] writBytes = new byte[ins.available()];
                         tvLog.append("selected file and size " + data.getData().getPath() + writBytes.length +"\n");
                         bootLoaderThread.stm32SetFlashData(writBytes);
+                        isSetFlash = true;
                     }
 
                 } catch (IOException e) {

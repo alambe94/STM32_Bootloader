@@ -24,8 +24,10 @@ public class Crc8 {
 
     public static byte getCrc8(byte[] data, int len) {
         byte crc = 0;
+        int temp = 0;
         for (int i = 0; i < len; i++) {
-            crc = (crc8Table[crc ^ data[i]]);
+            temp = (crc ^ data[i]) & 0xFF;
+            crc = (crc8Table[temp]);
         }
         return crc;
     }
