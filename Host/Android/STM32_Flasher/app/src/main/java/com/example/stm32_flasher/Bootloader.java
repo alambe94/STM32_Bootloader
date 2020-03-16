@@ -16,10 +16,10 @@ public class Bootloader extends Thread {
     private final Handler mHandler;
 
     private byte[] readBinary = new byte[BootloaderConstants.STM32_FLASH_SIZE];
-    private boolean isReadBinary = false;
+    private boolean isGetFlashData = false;
 
     private byte[] writeBinary;
-    private boolean isWriteBinary = false;
+    private boolean isSetFlashData = false;
 
 
     private boolean isCmdRunning = false;
@@ -74,9 +74,9 @@ public class Bootloader extends Thread {
         }
     }
 
-    private void write(byte[] bytes) {
+    private void write(byte[] bytes, int len) {
         try {
-            mOutStream.write(bytes);
+            mOutStream.write(bytes, 0, len);
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "Error occurred when sending data", e);
@@ -90,16 +90,16 @@ public class Bootloader extends Thread {
         byte crc = Crc8.getCrc8(temp, 1);
 
         temp[0] = BootloaderConstants.SYNC_CHAR;
-        write(temp);
+        write(temp, 1);
 
         temp[0] = 2;
-        write(temp);
+        write(temp, 1);
 
         temp[0] = cmd;
-        write(temp);
+        write(temp, 1);
 
         temp[0] = crc;
-        write(temp);
+        write(temp, 1);
     }
 
     private byte stm32ReadByte(int timeOut) {
@@ -107,10 +107,8 @@ public class Bootloader extends Thread {
         byte[] rx_char = new byte[1];
 
         try {
-            while (System.currentTimeMillis() - tstamp < timeOut)
-            {
-                if(mInStream.available() > 0)
-                {
+            while (System.currentTimeMillis() - tstamp < timeOut) {
+                if (mInStream.available() > 0) {
                     mInStream.read(rx_char, 0, 1);
                     break;
                 }
@@ -133,7 +131,7 @@ public class Bootloader extends Thread {
         stm32SendCMD(BootloaderConstants.CMD_ERASE);
 
         if (stm32ReadACK(10000)) {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"MCU flash erase success\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "MCU flash erase success\n").sendToTarget();
         } else {
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "MCU flash erase failed\n").sendToTarget();
         }
@@ -147,7 +145,7 @@ public class Bootloader extends Thread {
         if (stm32ReadACK(500)) {
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "MCU reset success\n").sendToTarget();
         } else {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"MCU reset failed\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "MCU reset failed\n").sendToTarget();
         }
 
     }
@@ -156,18 +154,18 @@ public class Bootloader extends Thread {
         stm32SendCMD(BootloaderConstants.CMD_JUMP);
 
         if (stm32ReadACK(500)) {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"MCU jump success\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "MCU jump success\n").sendToTarget();
         } else {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"MCU jump failed\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "MCU jump failed\n").sendToTarget();
         }
     }
 
     private void stm32ReadFlash() {
 
         long start_time = System.currentTimeMillis();
-        int flashReadLen = BootloaderConstants.STM32_FLASH_SIZE;
+        int remainingBytes = BootloaderConstants.STM32_FLASH_SIZE;
         int stm32AapAddress = BootloaderConstants.STM32_FLASH_START;
-        final int totalLen = flashReadLen;
+        final int totalLen = remainingBytes;
 
         byte[] blPacket = new byte[10];
         byte[] rxBuffer = new byte[256];
@@ -177,12 +175,11 @@ public class Bootloader extends Thread {
         int blPacketIndex;
 
         int readFileIndex = 0;
-        isReadBinary = false;
 
-        while (flashReadLen > 0) {
+        while (remainingBytes > 0) {
 
-            if (flashReadLen < readBlockSize) {
-                readBlockSize = (byte) flashReadLen;
+            if (remainingBytes < readBlockSize) {
+                readBlockSize = (byte) remainingBytes;
             }
 
             blPacketIndex = 0;
@@ -190,7 +187,7 @@ public class Bootloader extends Thread {
             // assemble cmd
             blPacket[blPacketIndex++] = BootloaderConstants.CMD_READ;
 
-            // no char to receive from stm32
+            // no of char to receive from stm32
             blPacket[blPacketIndex++] = (byte) readBlockSize;
 
             // 2 bytes padding for stm32 word alignment
@@ -211,14 +208,14 @@ public class Bootloader extends Thread {
 
             // send sync char
             temp[0] = BootloaderConstants.SYNC_CHAR;
-            write(temp);
+            write(temp, 1);
 
-            // send no chars in blPacket
+            // send no of chars in blPacket
             temp[0] = (byte) blPacketIndex;
-            write(temp);
+            write(temp, 1);
 
             // send blPacket
-            write(blPacket);
+            write(blPacket, blPacketIndex);
 
             if (stm32ReadACK(500)) {
 
@@ -233,26 +230,26 @@ public class Bootloader extends Thread {
                 if (crc_recvd == crc_calc) {
                     System.arraycopy(rxBuffer, 0, readBinary, readFileIndex, readBlockSize);
                     readFileIndex += readBlockSize;
-                    flashReadLen -= readBlockSize;
+                    remainingBytes -= readBlockSize;
                     stm32AapAddress += readBlockSize;
-                    mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (flashReadLen * 100) / totalLen, 1).sendToTarget();
+                    mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (remainingBytes * 100) / totalLen, 1).sendToTarget();
                 } else {
-                    mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"crc mismatch\n").sendToTarget();
+                    mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "crc mismatch\n").sendToTarget();
                     break;
                 }
 
             } else {
-                mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"flash read error at " + stm32AapAddress + "\n").sendToTarget();
+                mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "flash read error at 0x" + Integer.toHexString(stm32AapAddress) + "\n").sendToTarget();
                 break;
             }
         }
 
-        if (flashReadLen == 0) {
-            isReadBinary = true;
+        if (remainingBytes == 0) {
+            isGetFlashData = true;
             long elapsedTime = System.currentTimeMillis() - start_time;
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"flash read successful, jolly good!!!!\n").sendToTarget();
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"elapsed time = " + elapsedTime + "\n").sendToTarget();
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"read speed = " + (totalLen / elapsedTime) + "KBS\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "flash read successful, jolly good!!!!\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "elapsed time = " + elapsedTime + "\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "read speed = " + (totalLen / elapsedTime) + "KBS\n").sendToTarget();
 
         }
 
@@ -263,7 +260,7 @@ public class Bootloader extends Thread {
         long start_time = System.currentTimeMillis();
         int stm32AapAddress = BootloaderConstants.STM32_FLASH_START;
         int totalLen = 1;
-        int bytesRemaining = BootloaderConstants.STM32_FLASH_SIZE;
+        int remainingBytes = BootloaderConstants.STM32_FLASH_SIZE;
 
         byte[] blPacket = new byte[256];
         byte[] temp = new byte[1];
@@ -273,20 +270,18 @@ public class Bootloader extends Thread {
 
         int writeFileIndex = 0;
 
-        if(isWriteBinary)
-        {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"selected file size " + writeBinary.length + "\n").sendToTarget();
+        if (isSetFlashData) {
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "selected file size " + writeBinary.length + "\n").sendToTarget();
             totalLen = writeBinary.length;
-            bytesRemaining = totalLen;
-        }
-        else {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"please select file first\n").sendToTarget();
+            remainingBytes = totalLen;
+        } else {
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "please select file first\n").sendToTarget();
         }
 
-        while (bytesRemaining > 0) {
+        while (remainingBytes > 0) {
 
-            if (bytesRemaining < writeBlockSize) {
-                writeBlockSize = (byte) bytesRemaining;
+            if (remainingBytes < writeBlockSize) {
+                writeBlockSize = (byte) remainingBytes;
             }
 
             blPacketIndex = 0;
@@ -294,7 +289,7 @@ public class Bootloader extends Thread {
             // assemble cmd
             blPacket[blPacketIndex++] = BootloaderConstants.CMD_WRITE;
 
-            // no char to to write to stm32
+            // no of char to to write to stm32
             blPacket[blPacketIndex++] = (byte) writeBlockSize;
 
             // 2 bytes padding for stm32 word alignment
@@ -318,30 +313,29 @@ public class Bootloader extends Thread {
 
             // send sync char
             temp[0] = BootloaderConstants.SYNC_CHAR;
-            write(temp);
+            write(temp, 1);
 
-            // send no chars in blPacket
+            // send no of chars in blPacket
             temp[0] = (byte) (blPacketIndex);
-            write(temp);
+            write(temp, 1);
 
             // send blPacket
-            write(blPacket);
+            write(blPacket, blPacketIndex);
 
 
             writeFileIndex += writeBlockSize;
-            bytesRemaining -= writeBlockSize;
+            remainingBytes -= writeBlockSize;
             stm32AapAddress += writeBlockSize;
 
             if (stm32ReadACK(500)) {
-                mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (bytesRemaining * 100) / totalLen, -1).sendToTarget();
+                mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (remainingBytes * 100) / totalLen, -1).sendToTarget();
             } else {
-                mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"write flash error at " + stm32AapAddress + "\n").sendToTarget();
+                mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "write flash error at 0x" + Integer.toHexString(stm32AapAddress) + "\n").sendToTarget();
                 break;
             }
         }
 
-        if (bytesRemaining == 0) {
-            isReadBinary = true;
+        if (remainingBytes == 0) {
             long elapsedTime = System.currentTimeMillis() - start_time;
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "flash write successful, jolly good!!!!\n").sendToTarget();
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "elapsed time = " + elapsedTime + "\n").sendToTarget();
@@ -355,7 +349,7 @@ public class Bootloader extends Thread {
         long start_time = System.currentTimeMillis();
         int stm32AapAddress = BootloaderConstants.STM32_FLASH_START;
         int totalLen = 1;
-        int bytesRemaining = BootloaderConstants.STM32_FLASH_SIZE;
+        int remainingBytes = BootloaderConstants.STM32_FLASH_SIZE;
 
         byte[] blPacket = new byte[256];
         byte[] temp = new byte[1];
@@ -365,20 +359,18 @@ public class Bootloader extends Thread {
 
         int writeFileIndex = 0;
 
-        if(isWriteBinary)
-        {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"selected file size " + writeBinary.length + "\n").sendToTarget();
+        if (isSetFlashData) {
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "selected file size " + writeBinary.length + "\n").sendToTarget();
             totalLen = writeBinary.length;
-            bytesRemaining = totalLen;
-        }
-        else {
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"please select file first\n").sendToTarget();
+            remainingBytes = totalLen;
+        } else {
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "please select file first\n").sendToTarget();
         }
 
-        while (bytesRemaining > 0) {
+        while (remainingBytes > 0) {
 
-            if (bytesRemaining < writeBlockSize) {
-                writeBlockSize = (byte) bytesRemaining;
+            if (remainingBytes < writeBlockSize) {
+                writeBlockSize = (byte) remainingBytes;
             }
 
             blPacketIndex = 0;
@@ -386,7 +378,7 @@ public class Bootloader extends Thread {
             // assemble cmd
             blPacket[blPacketIndex++] = BootloaderConstants.CMD_VERIFY;
 
-            // no char to to write to stm32
+            // no of char to to write to stm32
             blPacket[blPacketIndex++] = (byte) writeBlockSize;
 
             // 2 bytes padding for stm32 word alignment
@@ -410,30 +402,29 @@ public class Bootloader extends Thread {
 
             // send sync char
             temp[0] = BootloaderConstants.SYNC_CHAR;
-            write(temp);
+            write(temp, 1);
 
-            // send no chars in blPacket
+            // send no of chars in blPacket
             temp[0] = (byte) (blPacketIndex);
-            write(temp);
+            write(temp, 1);
 
             // send blPacket
-            write(blPacket);
+            write(blPacket, blPacketIndex);
 
 
             writeFileIndex += writeBlockSize;
-            bytesRemaining -= writeBlockSize;
+            remainingBytes -= writeBlockSize;
             stm32AapAddress += writeBlockSize;
 
             if (stm32ReadACK(500)) {
-                mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (bytesRemaining * 100) / totalLen, -1).sendToTarget();
+                mHandler.obtainMessage(BootloaderConstants.MESSAGE_PROGRESS_BAR, 100 - (remainingBytes * 100) / totalLen, -1).sendToTarget();
             } else {
-                mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG,"verify flash error at " + stm32AapAddress + "\n").sendToTarget();
+                mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "verify flash error at 0x" + Integer.toHexString(stm32AapAddress) + "\n").sendToTarget();
                 break;
             }
         }
 
-        if (bytesRemaining == 0) {
-            isReadBinary = true;
+        if (remainingBytes == 0) {
             long elapsedTime = System.currentTimeMillis() - start_time;
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "flash verify successful, jolly good!!!!\n").sendToTarget();
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "elapsed time = " + elapsedTime + "\n").sendToTarget();
@@ -445,10 +436,9 @@ public class Bootloader extends Thread {
     public byte[] stm32GetFlashData() {
 
         byte[] arr;
-        if (isReadBinary)
-        {
+        if (isGetFlashData) {
             arr = new byte[readBinary.length];
-            System.arraycopy(readBinary,0,arr,0,readBinary.length);
+            System.arraycopy(readBinary, 0, arr, 0, readBinary.length);
             return arr;
         }
         return new byte[1];
@@ -458,7 +448,7 @@ public class Bootloader extends Thread {
 
         writeBinary = new byte[bytes.length];
         System.arraycopy(bytes, 0, writeBinary, 0, bytes.length);
-        isWriteBinary = true;
+        isSetFlashData = true;
 
     }
 

@@ -498,7 +498,7 @@ void BL_Main()
     HAL_Delay(1);
 
     /* if pin is reset enter bootloader*/
-    if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
+    //if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
 	{
 	BL_Loop();
 	}

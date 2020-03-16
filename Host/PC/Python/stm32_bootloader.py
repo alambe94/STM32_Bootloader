@@ -173,7 +173,7 @@ def stm32_read_flash():
         # assemble cmd
         bl_packet += int_to_bytes(CMD_READ)
 
-        # no char to receive from stm32
+        # no of char to receive from stm32
         bl_packet += int_to_bytes(read_block_size)
 
         # 2 bytes padding for stm32 word alignment
@@ -195,7 +195,7 @@ def stm32_read_flash():
         # send sync char
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
 
-        # send no chars in bl_packet
+        # send no of chars in bl_packet
         Serial_Port.write(int_to_bytes(9))  # total bytes in bl_packet
 
         # send bl_packet
@@ -219,6 +219,7 @@ def stm32_read_flash():
 
             else:
                 print("crc mismatch")
+                break
 
         else:
             print("flash read error at " + hex(stm32_app_address))
@@ -276,7 +277,7 @@ def stm32_write(bin_file):
         # assemble cmd
         bl_packet += int_to_bytes(CMD_WRITE)
 
-        # no char to flash to stm32
+        # no of char to flash to stm32
         bl_packet += int_to_bytes(write_block_size)
 
         # 2 bytes padding for stm32 word alignment
@@ -302,7 +303,7 @@ def stm32_write(bin_file):
         # send sync char
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
 
-        # send no char in bl_packet
+        # send no of char in bl_packet
         Serial_Port.write(int_to_bytes(write_block_size + 9))
 
         # send bl_packet
@@ -360,7 +361,7 @@ def stm32_verify(bin_file):
         # assemble cmd
         bl_packet += int_to_bytes(CMD_VERIFY)
 
-        # no char to flash to stm32
+        # no of char to flash to stm32
         bl_packet += int_to_bytes(write_block_size)
 
         # 2 bytes padding for stm32 word alignment
@@ -386,7 +387,7 @@ def stm32_verify(bin_file):
         # send sync char
         Serial_Port.write(int_to_bytes(SYNC_CHAR))
 
-        # send no char in bl_packet
+        # send no of char in bl_packet
         Serial_Port.write(int_to_bytes(write_block_size + 9))
 
         # send bl_packet

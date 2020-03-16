@@ -220,7 +220,6 @@ void stm32_read_flash()
 
    uint8_t bl_packet[10];
    uint8_t rx_buffer[256];
-   uint8_t read_block_size = 240;
 
    fp = fopen("output_file.bin", "wb");
 
@@ -234,6 +233,7 @@ void stm32_read_flash()
    {
 
       uint8_t bl_packet_index;
+      uint8_t read_block_size = 240;
       uint8_t temp[1];
 
       if (remaining_bytes < read_block_size)
@@ -249,7 +249,7 @@ void stm32_read_flash()
       // assemble cmd
       bl_packet[bl_packet_index++] = CMD_READ;
 
-      // no char to receive from stm32
+      // no of char to receive from stm32
       bl_packet[bl_packet_index++] = read_block_size;
 
       // 2 bytes padding for stm32 word alignment
@@ -272,7 +272,7 @@ void stm32_read_flash()
       temp[0] = SYNC_CHAR;
       Serial_Port_Write(Serial_Handle, temp, 1);
 
-      // send no chars in bl_packet
+      // send no of chars in bl_packet
       temp[0] = bl_packet_index;
       Serial_Port_Write(Serial_Handle, temp, 1);
 
@@ -303,6 +303,7 @@ void stm32_read_flash()
          else
          {
             printf("crc mismatch\n");
+            break;
          }
       }
       else
@@ -333,7 +334,6 @@ void stm32_write(char *input_file)
    uint32_t start_time = system_current_time_millis();
    uint32_t stm32_app_address = USER_APP_ADDRESS;
 
-   uint8_t write_block_size = 240;
    uint8_t bl_packet[256];
 
    printf("opening file...\n");
@@ -351,6 +351,7 @@ void stm32_write(char *input_file)
       rewind(fp);
       printf("file size %u\n", f_file_size);
       uint32_t remaining_bytes = f_file_size;
+      uint8_t write_block_size = 240;
 
       while (remaining_bytes > 0)
       {
@@ -368,7 +369,7 @@ void stm32_write(char *input_file)
          // assemble cmd
          bl_packet[bl_packet_index++] = CMD_WRITE;
 
-         // no char to flash to stm32
+         // no of char to flash to stm32
          bl_packet[bl_packet_index++] = write_block_size;
 
          // 2 bytes padding for stm32 word alignment
@@ -395,7 +396,7 @@ void stm32_write(char *input_file)
          temp[0] = SYNC_CHAR;
          Serial_Port_Write(Serial_Handle, temp, 1);
 
-         // send no char in bl_packet
+         // send no of char in bl_packet
          temp[0] = bl_packet_index;
          Serial_Port_Write(Serial_Handle, temp, 1);
 
@@ -473,7 +474,7 @@ void stm32_verify(char *input_file)
          // assemble cmd
          bl_packet[bl_packet_index++] = CMD_VERIFY;
 
-         // no char to flash to stm32
+         // no of char to flash to stm32
          bl_packet[bl_packet_index++] = write_block_size;
 
          // 2 bytes padding for stm32 word alignment
@@ -500,7 +501,7 @@ void stm32_verify(char *input_file)
          temp[0] = SYNC_CHAR;
          Serial_Port_Write(Serial_Handle, temp, 1);
 
-         // send no char in bl_packet
+         // send no of char in bl_packet
          temp[0] = bl_packet_index;
          Serial_Port_Write(Serial_Handle, temp, 1);
 
