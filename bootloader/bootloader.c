@@ -316,24 +316,30 @@ void BL_Reset_Callback()
 void BL_Jump_Callback()
     {
 
-    uint32_t app_adress = 0;
+    uint32_t reset_vector = 0;
+    uint32_t stack_pointer = 0;
 
     void (*pFunction)(void);
 
     BL_UART_Send_Char(BL_CMD_ACK);
 
+    __disable_irq();
     HAL_DeInit();
 
-    /* execute the new program */
-    app_adress = *(__IO uint32_t*) (USER_FLASH_START_ADDRESS + 4);
+    stack_pointer = *(__IO uint32_t*) USER_FLASH_START_ADDRESS;
+    reset_vector = *(__IO uint32_t*) (USER_FLASH_START_ADDRESS + 4);
 
-    /* Jump to user application */
-    pFunction = (void (*)(void)) app_adress;
+    pFunction = (void (*)(void)) reset_vector;
 
-    /* Initialize user application's Stack Pointer */
-    __set_MSP(*(__IO uint32_t*) USER_FLASH_START_ADDRESS);
+    if ((stack_pointer & 0x20000000) == 0x20000000)
+	{
+	/* Initialize user application's Stack Pointer */
+	__set_MSP(stack_pointer);
 
-    pFunction();
+	/* Jump to user application */
+	pFunction();
+	}
+
     }
 
 void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t len)
@@ -498,7 +504,7 @@ void BL_Main()
     HAL_Delay(1);
 
     /* if pin is reset enter bootloader*/
-    //if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
+    if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
 	{
 	BL_Loop();
 	}
