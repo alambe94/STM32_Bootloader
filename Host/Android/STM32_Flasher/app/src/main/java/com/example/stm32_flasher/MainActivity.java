@@ -229,8 +229,9 @@ public class MainActivity extends AppCompatActivity {
                     InputStream ins = getContentResolver().openInputStream(data.getData());
                     if (ins != null) {
                         byte[] writBytes = new byte[ins.available()];
-                        tvLog.append("selected file and size " + data.getData().getPath() + writBytes.length +"\n");
-                        bootLoaderThread.stm32SetFlashData(writBytes);
+                        int len = ins.read(writBytes);
+                        tvLog.append("selected file and size " + data.getData().getPath() + len +"\n");
+                        bootLoaderThread.stm32SetFlashData(writBytes, len);
                         isSetFlash = true;
                     }
 

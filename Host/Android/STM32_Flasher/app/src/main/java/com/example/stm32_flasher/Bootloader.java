@@ -445,10 +445,10 @@ public class Bootloader extends Thread {
         return new byte[1];
     }
 
-    public void stm32SetFlashData(byte[] bytes) {
+    public void stm32SetFlashData(byte[] bytes, int len) {
 
-        writeBinary = new byte[bytes.length];
-        System.arraycopy(bytes, 0, writeBinary, 0, bytes.length);
+        writeBinary = new byte[len];
+        System.arraycopy(bytes, 0, writeBinary, 0, len);
         isSetFlashData = true;
 
     }
