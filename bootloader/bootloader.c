@@ -518,11 +518,9 @@ static void BL_Get_Version_Callback()
 /**
  * @brief bootloader main process loop
  **/
+
 static void BL_Loop()
     {
-
-    uint32_t address = 0;
-    uint32_t len = 0;
 
     while (1)
 	{
@@ -549,9 +547,15 @@ static void BL_Loop()
 			{
 
 			uint8_t cmd = BL_RX_Buffer[0];
-			len = BL_RX_Buffer[1];
+
+			/* only applicable to CMD_WRITE, CMD_READ, CMD_VERIFY cmds,  dont care for other cmd*/
+			/* no of bytes to read or write*/
+			uint32_t len = BL_RX_Buffer[1];
+			uint32_t address = BL_RX_Buffer[4] << 24 | BL_RX_Buffer[5] << 16|
+				           BL_RX_Buffer[6] << 8 | BL_RX_Buffer[7] << 0;
 
 			/* dont care*/
+			/* padding for stm32 word alignment*/
 			(void) BL_RX_Buffer[2];
 			(void) BL_RX_Buffer[3];
 
@@ -561,13 +565,10 @@ static void BL_Loop()
 #if (BL_ENABLE_CRC == 1)
 			/* calculate crc */
 			uint8_t crc_calc = BL_CRC8(BL_RX_Buffer,
-				(packet_len - 1));
+				                  (packet_len - 1));
 #else
 						uint8_t crc_calc = crc_recvd;
 #endif
-
-			address = BL_RX_Buffer[4] << 24 | BL_RX_Buffer[5] << 16
-				| BL_RX_Buffer[6] << 8 | BL_RX_Buffer[7] << 0;
 
 			if (crc_calc == crc_recvd)
 			    {
@@ -606,7 +607,6 @@ static void BL_Loop()
 				break;
 
 			    default:
-				//print CMD_ERROR
 				break;
 				}
 			    }
@@ -633,6 +633,36 @@ void BL_Main()
 
     /* else jump to application */
     BL_Jump_Callback();
+    }
+
+/**
+ * @brief init peripheral used by bootloader
+ * @note  note the address of this function in map/list or assembly file to directly jump to
+ *        bootloader from user application, skipping input boot pin check.
+ **/
+
+extern HAL_StatusTypeDef HAL_Init(void);
+extern void SystemClock_Config(void);
+extern void MX_GPIO_Init(void);
+extern MX_USART2_UART_Init(void);
+
+static void BL_Init()
+    {
+   /* configure vector table*/
+    SystemInit();
+
+    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+    HAL_Init();
+
+    /* Configure the system clock */
+    SystemClock_Config();
+
+    /* Initialize all configured peripherals */
+    MX_GPIO_Init();
+    MX_USART2_UART_Init();
+
+    BL_Loop();
+
     }
 
 /**
