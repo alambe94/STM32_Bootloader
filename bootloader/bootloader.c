@@ -479,6 +479,7 @@ static void BL_Jump_Callback()
 
     __disable_irq();
     HAL_DeInit();
+    HAL_UART_MspDeInit(BL_UART);
 
     stack_pointer = *(__IO uint32_t*) USER_FLASH_START_ADDRESS;
     reset_vector = *(__IO uint32_t*) (USER_FLASH_START_ADDRESS + 4);
@@ -625,43 +626,13 @@ void BL_Main()
 
     HAL_Delay(1);
 
-    /* if pin is reset enter bootloader*/
-    if(HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
+    /* if pin is low enter bootloader*/
+    if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
 	{
 	BL_Loop();
 	}
-
     /* else jump to application */
     BL_Jump_Callback();
-    }
-
-/**
- * @brief init peripheral used by bootloader
- * @note  note the address of this function in map/list or assembly file to directly jump to
- *        bootloader from user application, skipping input boot pin check.
- **/
-
-extern HAL_StatusTypeDef HAL_Init(void);
-extern void SystemClock_Config(void);
-extern void MX_GPIO_Init(void);
-extern MX_USART2_UART_Init(void);
-
-static void BL_Init()
-    {
-   /* configure vector table*/
-    SystemInit();
-
-    /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
-
-    /* Configure the system clock */
-    SystemClock_Config();
-
-    /* Initialize all configured peripherals */
-    MX_GPIO_Init();
-    MX_USART2_UART_Init();
-
-    BL_Loop();
 
     }
 
