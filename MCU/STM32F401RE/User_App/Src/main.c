@@ -69,7 +69,6 @@ int main(void)
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
-  
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -91,6 +90,12 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
+
+#if(FLASH_BASE == 0x08000000UL)
+#error "bootloader is enable, must adjust FLASH_BASE in stm32f401xe.h"\
+       "also update linker script STM32F401RETX_FLASH.ld accordingly "\
+       "0x08008000UL for 32K of bootloader size"
+#endif
 
   /* USER CODE END 2 */
 
