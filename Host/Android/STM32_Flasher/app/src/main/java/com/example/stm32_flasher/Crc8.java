@@ -5,22 +5,23 @@ public class Crc8 {
     /*Maxim APPLICATION NOTE 27 */
     private static final byte[] crc8Table =
             {
-                    0, 94, (byte) 188, (byte) 226, 97, 63, (byte) 221, (byte) 131, (byte) 194, (byte) 156, 126, 32, (byte) 163, (byte) 253, 31, 65,
-                    (byte) 157, (byte) 195, 33, 127, (byte) 252, (byte) 162, 64, 30, 95, 1, (byte) 227, (byte) 189, 62, 96, (byte) 130, (byte) 220,
-                    35, 125, (byte) 159, (byte) 193, 66, 28, (byte) 254, (byte) 160, (byte) 225, (byte) 191, 93, 3, (byte) 128, (byte) 222, 60, 98,
-                    (byte) 190, (byte) 224, 2, 92, (byte) 223, (byte) 129, 99, 61, 124, 34, (byte) 192, (byte) 158, 29, 67, (byte) 161, (byte) 255,
-                    70, 24, (byte) 250, (byte) 164, 39, 121, (byte) 155, (byte) 197, (byte) 132, (byte) 218, 56, 102, (byte) 229, (byte) 187, 89, 7,
-                    (byte) 219, (byte) 133, 103, 57, (byte) 186, (byte) 228, 6, 88, 25, 71, (byte) 165, (byte) 251, 120, 38, (byte) 196, (byte) 154,
-                    101, 59, (byte) 217, (byte) 135, 4, 90, (byte) 184, (byte) 230, (byte) 167, (byte) 249, 27, 69, (byte) 198, (byte) 152, 122, 36,
-                    (byte) 248, (byte) 166, 68, 26, (byte) 153, (byte) 199, 37, 123, 58, 100, (byte) 134, (byte) 216, 91, 5, (byte) 231, (byte) 185,
-                    (byte) 140, (byte) 210, 48, 110, (byte) 237, (byte) 179, 81, 15, 78, 16, (byte) 242, (byte) 172, 47, 113, (byte) 147, (byte) 205,
-                    17, 79, (byte) 173, (byte) 243, 112, 46, (byte) 204, (byte) 146, (byte) 211, (byte) 141, 111, 49, (byte) 178, (byte) 236, 14, 80,
-                    (byte) 175, (byte) 241, 19, 77, (byte) 206, (byte) 144, 114, 44, 109, 51, (byte) 209, (byte) 143, 12, 82, (byte) 176, (byte) 238,
-                    50, 108, (byte) 142, (byte) 208, 83, 13, (byte) 239, (byte) 177, (byte) 240, (byte) 174, 76, 18, (byte) 145, (byte) 207, 45, 115,
-                    (byte) 202, (byte) 148, 118, 40, (byte) 171, (byte) 245, 23, 73, 8, 86, (byte) 180, (byte) 234, 105, 55, (byte) 213, (byte) 139,
-                    87, 9, (byte) 235, (byte) 181, 54, 104, (byte) 138, (byte) 212, (byte) 149, (byte) 203, 41, 119, (byte) 244, (byte) 170, 72, 22,
-                    (byte) 233, (byte) 183, 85, 11, (byte) 136, (byte) 214, 52, 106, 43, 117, (byte) 151, (byte) 201, 74, 20, (byte) 246, (byte) 168,
-                    116, 42, (byte) 200, (byte) 150, 21, 75, (byte) 169, (byte) 247, (byte) 182, (byte) 232, 10, 84, (byte) 215, (byte) 137, 107, 53};
+                    0x00, 0x5E, (byte) 0xBC, (byte) 0xE2, 0x61, 0x3F, (byte) 0xDD, (byte) 0x83, (byte) 0xC2, (byte) 0x9C, 0x7E, 0x20, (byte) 0xA3, (byte) 0xFD, 0x1F, 0x41,
+                    (byte) 0x9D, (byte) 0xC3, 0x21, 0x7F, (byte) 0xFC, (byte) 0xA2, 0x40, 0x1E, 0x5F, 0x01, (byte) 0xE3, (byte) 0xBD, 0x3E, 0x60, (byte) 0x82, (byte) 0xDC,
+                    0x23, 0x7D, (byte) 0x9F, (byte) 0xC1, 0x42, 0x1C, (byte) 0xFE, (byte) 0xA0, (byte) 0xE1, (byte) 0xBF, 0x5D, 0x03, (byte) 0x80, (byte) 0xDE, 0x3C, 0x62,
+                    (byte) 0xBE, (byte) 0xE0, 0x02, 0x5C, (byte) 0xDF, (byte) 0x81, 0x63, 0x3D, 0x7C, 0x22, (byte) 0xC0, (byte) 0x9E, 0x1D, 0x43, (byte) 0xA1, (byte) 0xFF,
+                    0x46, 0x18, (byte) 0xFA, (byte) 0xA4, 0x27, 0x79, (byte) 0x9B, (byte) 0xC5, (byte) 0x84, (byte) 0xDA, 0x38, 0x66, (byte) 0xE5, (byte) 0xBB, 0x59, 0x07,
+                    (byte) 0xDB, (byte) 0x85, 0x67, 0x39, (byte) 0xBA, (byte) 0xE4, 0x06, 0x58, 0x19, 0x47, (byte) 0xA5, (byte) 0xFB, 0x78, 0x26, (byte) 0xC4, (byte) 0x9A,
+                    0x65, 0x3B, (byte) 0xD9, (byte) 0x87, 0x04, 0x5A, (byte) 0xB8, (byte) 0xE6, (byte) 0xA7, (byte) 0xF9, 0x1B, 0x45, (byte) 0xC6, (byte) 0x98, 0x7A, 0x24,
+                    (byte) 0xF8, (byte) 0xA6, 0x44, 0x1A, (byte) 0x99, (byte) 0xC7, 0x25, 0x7B, 0x3A, 0x64, (byte) 0x86, (byte) 0xD8, 0x5B, 0x05, (byte) 0xE7, (byte) 0xB9,
+                    (byte) 0x8C, (byte) 0xD2, 0x30, 0x6E, (byte) 0xED, (byte) 0xB3, 0x51, 0x0F, 0x4E, 0x10, (byte) 0xF2, (byte) 0xAC, 0x2F, 0x71, (byte) 0x93, (byte) 0xCD,
+                    0x11, 0x4F, (byte) 0xAD, (byte) 0xF3, 0x70, 0x2E, (byte) 0xCC, (byte) 0x92, (byte) 0xD3, (byte) 0x8D, 0x6F, 0x31, (byte) 0xB2, (byte) 0xEC, 0x0E, 0x50,
+                    (byte) 0xAF, (byte) 0xF1, 0x13, 0x4D, (byte) 0xCE, (byte) 0x90, 0x72, 0x2C, 0x6D, 0x33, (byte) 0xD1, (byte) 0x8F, 0x0C, 0x52, (byte) 0xB0, (byte) 0xEE,
+                    0x32, 0x6C, (byte) 0x8E, (byte) 0xD0, 0x53, 0x0D, (byte) 0xEF, (byte) 0xB1, (byte) 0xF0, (byte) 0xAE, 0x4C, 0x12, (byte) 0x91, (byte) 0xCF, 0x2D, 0x73,
+                    (byte) 0xCA, (byte) 0x94, 0x76, 0x28, (byte) 0xAB, (byte) 0xF5, 0x17, 0x49, 0x08, 0x56, (byte) 0xB4, (byte) 0xEA, 0x69, 0x37, (byte) 0xD5, (byte) 0x8B,
+                    0x57, 0x09, (byte) 0xEB, (byte) 0xB5, 0x36, 0x68, (byte) 0x8A, (byte) 0xD4, (byte) 0x95, (byte) 0xCB, 0x29, 0x77, (byte) 0xF4, (byte) 0xAA, 0x48, 0x16,
+                    (byte) 0xE9, (byte) 0xB7, 0x55, 0x0B, (byte) 0x88, (byte) 0xD6, 0x34, 0x6A, 0x2B, 0x75, (byte) 0x97, (byte) 0xC9, 0x4A, 0x14, (byte) 0xF6, (byte) 0xA8,
+                    0x74, 0x2A, (byte) 0xC8, (byte) 0x96, 0x15, 0x4B, (byte) 0xA9, (byte) 0xF7, (byte) 0xB6, (byte) 0xE8, 0x0A, 0x54, (byte) 0xD7, (byte) 0x89, 0x6B, 0x35
+            };
 
     public static byte getCrc8(byte[] data, int len) {
         byte crc = 0;

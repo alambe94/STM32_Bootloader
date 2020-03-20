@@ -133,7 +133,6 @@ public class MainActivity extends AppCompatActivity {
                     if(bootLoaderThread.cmdRun(BootloaderConstants.CMD_WRITE))
                     {
                         tvLog.append("writing stm32 flash\n");
-
                     }
                     else {
                         tvLog.append("busy\n");
@@ -221,40 +220,52 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        bootLoaderThread.close();
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == BootloaderConstants.PICK_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
-            if (data.getData() != null && data.getData().getPath() != null) {
-                try {
-                    InputStream ins = getContentResolver().openInputStream(data.getData());
-                    if (ins != null) {
-                        byte[] writBytes = new byte[ins.available()];
-                        int len = ins.read(writBytes);
-                        tvLog.append("selected file and size " + data.getData().getPath() + len +"\n");
-                        bootLoaderThread.stm32SetFlashData(writBytes, len);
-                        isSetFlash = true;
+
+        if (resultCode == Activity.RESULT_OK) {
+
+            if (requestCode == BootloaderConstants.PICK_FILE_RESULT_CODE) {
+                if (data.getData() != null && data.getData().getPath() != null) {
+                    try {
+                        InputStream ins = getContentResolver().openInputStream(data.getData());
+                        if (ins != null) {
+                            byte[] writBytes = new byte[ins.available()];
+                            int len = ins.read(writBytes);
+                            tvLog.append("selected file and size " + data.getData().getPath() + len + "\n");
+                            bootLoaderThread.stm32SetFlashData(writBytes, len);
+                            isSetFlash = true;
+                            ins.close();
+                        }
+
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            } else if (requestCode == BootloaderConstants.SAVE_FILE_RESULT_CODE) {
+                if (data.getData() != null && data.getData().getPath() != null) {
+                    try {
+                        OutputStream ots = getContentResolver().openOutputStream(data.getData());
+                        if (ots != null) {
+                            byte[] dd = new byte[BootloaderConstants.STM32_FLASH_SIZE];
+                            if (bootLoaderThread.stm32GetFlashData(dd)) {
+                                ots.write(dd);
+                                ots.close();
+                            }
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
 
-                } catch (IOException e) {
-                    e.printStackTrace();
                 }
             }
-        } else if (requestCode == BootloaderConstants.SAVE_FILE_RESULT_CODE && resultCode == Activity.RESULT_OK) {
-            if (data.getData() != null && data.getData().getPath() != null) {
-                try {
-                    OutputStream ots = getContentResolver().openOutputStream(data.getData());
-                    if (ots != null) {
-                        ots.write(bootLoaderThread.stm32GetFlashData());
-                        ots.close();
-                    }
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-
-            }
-
         }
-
     }
 
 

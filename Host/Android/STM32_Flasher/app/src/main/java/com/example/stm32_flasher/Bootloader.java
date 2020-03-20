@@ -34,7 +34,7 @@ public class Bootloader extends Thread {
 
     @Override
     public void run() {
-        // Keep listening to the InputStream until an exception occurs.
+
         while (true) {
 
             try {
@@ -341,7 +341,7 @@ public class Bootloader extends Thread {
             long elapsedTime = System.currentTimeMillis() - start_time;
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "flash write successful, jolly good!!!!\n").sendToTarget();
             mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "elapsed time = " + elapsedTime + "\n").sendToTarget();
-            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "read speed = " + (totalLen / elapsedTime) + "KBS\n").sendToTarget();
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "write speed = " + (totalLen / elapsedTime) + "KBS\n").sendToTarget();
 
         }
     }
@@ -434,15 +434,13 @@ public class Bootloader extends Thread {
         }
     }
 
-    public byte[] stm32GetFlashData() {
+    public boolean stm32GetFlashData(byte[] readBin) {
 
-        byte[] arr;
         if (isGetFlashData) {
-            arr = new byte[readBinary.length];
-            System.arraycopy(readBinary, 0, arr, 0, readBinary.length);
-            return arr;
+            System.arraycopy(readBinary, 0, readBin, 0, readBinary.length);
+            return true;
         }
-        return new byte[1];
+        return false;
     }
 
     public void stm32SetFlashData(byte[] bytes, int len) {
@@ -465,6 +463,7 @@ public class Bootloader extends Thread {
     public void close() {
         try {
             mOutStream.close();
+            mInStream.close();
         } catch (IOException e) {
             e.printStackTrace();
             Log.e(TAG, "Could not close the streamt", e);

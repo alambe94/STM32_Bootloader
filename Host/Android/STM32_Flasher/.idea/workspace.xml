@@ -9,7 +9,11 @@
     <list default="true" id="c76ab1d2-2474-4e92-8904-d2607d1d1925" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/Bootloader.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/Bootloader.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/Crc8.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/Crc8.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/MainActivity.java" beforeDir="false" afterPath="$PROJECT_DIR$/app/src/main/java/com/example/stm32_flasher/MainActivity.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../PC/C/stm32_bootloader.c" beforeDir="false" afterPath="$PROJECT_DIR$/../../PC/C/stm32_bootloader.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../PC/Python/stm32_bootloader.py" beforeDir="false" afterPath="$PROJECT_DIR$/../../PC/Python/stm32_bootloader.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../../../bootloader/bootloader.c" beforeDir="false" afterPath="$PROJECT_DIR$/../../../bootloader/bootloader.c" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
@@ -17,7 +21,6 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="ExecutionTargetManager" SELECTED_TARGET="1342c914" />
   <component name="ExternalProjectsData">
     <projectState path="$PROJECT_DIR$">
       <ProjectState />
