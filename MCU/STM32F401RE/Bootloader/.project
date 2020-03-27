@@ -34,7 +34,7 @@
 		<link>
 			<name>bootloader</name>
 			<type>2</type>
-			<locationURI>copy_PARENT/bootloader</locationURI>
+			<location>D:/ST/firmware/bootloader</location>
 		</link>
 	</linkedResources>
 	<variableList>

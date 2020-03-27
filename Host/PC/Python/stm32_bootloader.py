@@ -4,8 +4,8 @@ import sys
 import time
 
 
-USER_APP_ADDRESS = 0x08008000
-FLASH_SIZE = 480000 #+512000 #uncomment for 407VG
+USER_APP_ADDRESS = 0x08004000
+FLASH_SIZE = 496000 #+512000 #uncomment for 407VG
 Serial_Port = ""
 
 """
@@ -40,6 +40,8 @@ CMD_NACK = 0x91
 CMD_ERROR = 0x92
 
 CMD_HELP = 0x40
+
+CMD_CONNECT = 0x7F
 
 SYNC_CHAR = ord('$')
 
@@ -437,31 +439,38 @@ def main():
     if ser_open:
         print("Port open success")
 
-        if(cmd == "write"):
-            if len(sys.argv) >= 5:
-                bin_file = sys.argv[4]
-                stm32_write(bin_file)
-                #stm32_jump()
-            else:
-                print("please enter input file")
-        elif(cmd == "erase"):
-            stm32_erase()
-        elif(cmd == "reset"):
-            stm32_reset()
-        elif(cmd == "jump"):
-            stm32_jump()
-        elif(cmd == "help"):
-            stm32_get_help()
-        elif(cmd == "read"):
-            stm32_read_flash()
-        elif(cmd == "verify"):
-            if len(sys.argv) >= 5:
-                bin_file = sys.argv[4]
-                stm32_verify(bin_file)
-            else:
-                print("please enter input file to verfy")
+        # CMD_CONNECT used for auto baud detection on stm32
+        Serial_Port.write(int_to_bytes(CMD_CONNECT))
+
+        if(stm32_read_ack() == False):
+            print("stm32 device connection failed")
         else:
-            print("invalid cmd")
+            print("connected to stm32 device")
+            if(cmd == "write"):
+                if len(sys.argv) >= 5:
+                    bin_file = sys.argv[4]
+                    stm32_write(bin_file)
+                    #stm32_jump()
+                else:
+                    print("please enter input file")
+            elif(cmd == "erase"):
+                stm32_erase()
+            elif(cmd == "reset"):
+                stm32_reset()
+            elif(cmd == "jump"):
+                stm32_jump()
+            elif(cmd == "help"):
+                stm32_get_help()
+            elif(cmd == "read"):
+                stm32_read_flash()
+            elif(cmd == "verify"):
+                if len(sys.argv) >= 5:
+                    bin_file = sys.argv[4]
+                    stm32_verify(bin_file)
+                else:
+                    print("please enter input file to verfy")
+            else:
+                print("invalid cmd")
 
         Serial_Port.close()
 

@@ -6,8 +6,8 @@
 
 #include "serial_port.h"
 
-#define USER_APP_ADDRESS 0x08008000
-#define FLASH_SIZE 480000 //+ 512000 //uncomment for 407VG
+#define USER_APP_ADDRESS 0x08004000
+#define FLASH_SIZE 496000 //+ 512000 //uncomment for 407VG
 
 /*
 CMD_WRITE, CMD_VERIFY Frame
@@ -39,6 +39,8 @@ CMD_ERASE, CMD_RESET, CMD_JUMP Frame
 #define CMD_ERROR 0x92
 
 #define CMD_HELP 0x40
+
+#define CMD_CONNECT 0x7F
 
 #define SYNC_CHAR '$'
 
@@ -83,7 +85,7 @@ uint64_t system_current_time_millis()
 }
 
 /*Maxim APPLICATION NOTE 27 */
-uint8_t BL_CRC8_Table[] =
+uint8_t CRC8_Table[] =
     {
         0x00, 0x5E, 0xBC, 0xE2, 0x61, 0x3F, 0xDD, 0x83, 0xC2, 0x9C, 0x7E, 0x20, 0xA3, 0xFD, 0x1F, 0x41,
         0x9D, 0xC3, 0x21, 0x7F, 0xFC, 0xA2, 0x40, 0x1E, 0x5F, 0x01, 0xE3, 0xBD, 0x3E, 0x60, 0x82, 0xDC,
@@ -560,55 +562,68 @@ int main(int argc, char *argv[])
    {
       printf("port open success\n");
 
-      if (strncmp(cmd, "write", strlen("write")) == 0)
+      // CMD_CONNECT used for auto baud detection on stm32
+      uint8_t temp = CMD_CONNECT;
+      Serial_Port_Write(Serial_Handle, &temp, 1);
+
+      if (!stm32_read_ack())
       {
-         if (argc >= 5)
-         {
-            char *bin_file = argv[4];
-            printf("input file = %s\n", bin_file);
-            stm32_write(bin_file);
-         }
-         else
-         {
-            printf("please enter input file\n");
-         }
-      }
-      else if (strncmp(cmd, "erase", strlen("erase")) == 0)
-      {
-         stm32_erase();
-      }
-      else if (strncmp(cmd, "reset", strlen("reset")) == 0)
-      {
-         stm32_reset();
-      }
-      else if (strncmp(cmd, "jump", strlen("jump")) == 0)
-      {
-         stm32_jump();
-      }
-      else if (strncmp(cmd, "help", strlen("help")) == 0)
-      {
-         stm32_get_help();
-      }
-      else if (strncmp(cmd, "read", strlen("read")) == 0)
-      {
-         stm32_read_flash();
-      }
-      else if (strncmp(cmd, "verify", strlen("verify")) == 0)
-      {
-         if (argc >= 5)
-         {
-            char *bin_file = argv[4];
-            printf("input file = %s\n", bin_file);
-            stm32_verify(bin_file);
-         }
-         else
-         {
-            printf("please enter input file to verfy\n");
-         }
+         printf("stm32 device connection failed\n");
       }
       else
       {
-         printf("Invalid cmd\n");
+         printf("connected to stm32 device\n");
+
+         if (strncmp(cmd, "write", strlen("write")) == 0)
+         {
+            if (argc >= 5)
+            {
+               char *bin_file = argv[4];
+               printf("input file = %s\n", bin_file);
+               stm32_write(bin_file);
+            }
+            else
+            {
+               printf("please enter input file\n");
+            }
+         }
+         else if (strncmp(cmd, "erase", strlen("erase")) == 0)
+         {
+            stm32_erase();
+         }
+         else if (strncmp(cmd, "reset", strlen("reset")) == 0)
+         {
+            stm32_reset();
+         }
+         else if (strncmp(cmd, "jump", strlen("jump")) == 0)
+         {
+            stm32_jump();
+         }
+         else if (strncmp(cmd, "help", strlen("help")) == 0)
+         {
+            stm32_get_help();
+         }
+         else if (strncmp(cmd, "read", strlen("read")) == 0)
+         {
+            stm32_read_flash();
+         }
+         else if (strncmp(cmd, "verify", strlen("verify")) == 0)
+         {
+            if (argc >= 5)
+            {
+               char *bin_file = argv[4];
+               printf("input file = %s\n", bin_file);
+               stm32_verify(bin_file);
+            }
+            else
+            {
+               printf("please enter input file to verfy\n");
+            }
+         }
+         else
+         {
+            printf("Invalid cmd\n");
+         }
       }
 
       printf("closing port\n");

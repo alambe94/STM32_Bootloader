@@ -33,6 +33,8 @@
 #define BL_VERSION_BUILD (4)
 
 #define BL_ENABLE_CRC 1
+#define BL_DEBUG      1
+
 
 
 #ifdef STM32F103xE
@@ -157,7 +159,7 @@ extern UART_HandleTypeDef huart2;
 static UART_HandleTypeDef *BL_UART = &huart2;
 
 /* bootloader version number */
-/* Major, minor, build  0.1.2*/
+/* Major, minor, build  eg 0.1.2*/
 static uint8_t BL_Version[3] = {BL_VERSION_MAJOR,BL_VERSION_MINOR,BL_VERSION_BUILD};
 
 static uint8_t BL_RX_Buffer[BL_RX_BUFFER_SIZE];
@@ -626,6 +628,10 @@ void BL_Main()
     {
 
     HAL_Delay(1);
+
+#if (BL_DEBUG == 1)
+    BL_Loop();
+#endif
 
     /* if pin is low enter bootloader*/
     if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
