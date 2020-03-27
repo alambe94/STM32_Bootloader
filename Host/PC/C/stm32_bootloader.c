@@ -297,10 +297,13 @@ void stm32_read_flash()
          if (crc_recvd == crc_calc)
          {
             fwrite(rx_buffer, 1, read_block_size, fp);
-            printf("flash read succsess at 0X%0x\n", stm32_app_address);
+            //printf("flash read succsess at 0X%0x\n", stm32_app_address);
             remaining_bytes -= read_block_size;
             stm32_app_address += read_block_size;
-            printf("remaining bytes: %u\n", remaining_bytes);
+            if ((100 * remaining_bytes) % FLASH_SIZE == 0)
+            {
+               printf("remaining %u %%\n", (100 * remaining_bytes / FLASH_SIZE));
+            }
          }
          else
          {
@@ -407,7 +410,7 @@ void stm32_write(char *input_file)
 
          if (stm32_read_ack())
          {
-            printf("flash write success at 0X%0x\n", stm32_app_address);
+            //printf("flash write success at 0X%0x\n", stm32_app_address);
          }
          else
          {
@@ -417,7 +420,11 @@ void stm32_write(char *input_file)
 
          remaining_bytes -= write_block_size;
          stm32_app_address += write_block_size;
-         printf("remaining bytes: %u\n", remaining_bytes);
+
+         if ((100 * remaining_bytes) % f_file_size == 0)
+         {
+            printf("remaining %u %%\n", (100 * remaining_bytes / f_file_size));
+         }
       }
 
       if (remaining_bytes == 0)
@@ -512,7 +519,7 @@ void stm32_verify(char *input_file)
 
          if (stm32_read_ack())
          {
-            printf("verify success at 0X%0x\n", stm32_app_address);
+            //printf("verify success at 0X%0x\n", stm32_app_address);
          }
          else
          {
@@ -522,7 +529,10 @@ void stm32_verify(char *input_file)
 
          remaining_bytes -= write_block_size;
          stm32_app_address += write_block_size;
-         printf("remaining bytes: %u\n", remaining_bytes);
+         if ((100 * remaining_bytes) % f_file_size == 0)
+         {
+            printf("remaining %u %%\n", (100 * remaining_bytes / f_file_size));
+         }
       }
 
       if (remaining_bytes == 0)

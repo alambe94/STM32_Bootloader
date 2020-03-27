@@ -36,10 +36,11 @@
 #define BL_VERSION_MINOR (1)
 #define BL_VERSION_BUILD (5)
 
-#define BL_ENABLE_CRC 1
-#define BL_DEBUG      1
+#define BL_ENABLE_CRC  1
+#define BL_DEBUG       1
+#define BL_AUTO_BAUD   0
 
-
+#define BL_BAUD        1000000
 
 #ifdef STM32F103xE
 #include "stm32f1xx_hal.h"
@@ -558,6 +559,7 @@ void BL_UART_RX_INT_Init(void)
 static void BL_Loop()
     {
 
+#if(BL_AUTO_BAUD == 1)
     /* auto baud detection ST AN4908*/
 
     /* temporarily suspend systick interrupt*/
@@ -572,7 +574,7 @@ static void BL_Loop()
     /* wait for two rising edge interrupts on uart rx pin*/
     while (BL_UART_RX_INT_Count < 2);
 
-    float elapsed_time = (float) (0xFFFFFF - Elapsed_Ticks) / (HAL_RCC_GetHCLKFreq() / 1000000);
+    float elapsed_time = (float) (0xFFFFFF - Elapsed_Ticks) / (float) (HAL_RCC_GetHCLKFreq() / 1000000);
     float bit_time = elapsed_time / 8;
     uint32_t baud = 1000000 / bit_time;
 
@@ -585,6 +587,9 @@ static void BL_Loop()
 
     /* update baud rate*/
     BL_UART->Init.BaudRate = baud;
+#else
+    BL_UART->Init.BaudRate = BL_BAUD;
+#endif
 
     /* init uart with new baud*/
     if (HAL_UART_Init(&huart2) != HAL_OK)
