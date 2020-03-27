@@ -37,7 +37,7 @@
 #define BL_VERSION_BUILD (5)
 
 #define BL_ENABLE_CRC 1
-#define BL_DEBUG      0
+#define BL_DEBUG      1
 
 
 
@@ -489,7 +489,6 @@ static void BL_Jump_Callback()
 
     BL_UART_Send_Char(BL_CMD_ACK);
 
-    __disable_irq();
     HAL_DeInit();
     HAL_UART_DeInit(BL_UART);
 

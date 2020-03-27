@@ -91,7 +91,7 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-#if(FLASH_BASE == 0x08000000UL)
+#if(FLASH_BASE != 0x08004000UL)
 #error "bootloader is enable, must adjust FLASH_BASE in stm32f401xe.h"\
        "also update linker script STM32F401RETX_FLASH.ld accordingly "\
        "0x08008000UL for 32K of bootloader size"
