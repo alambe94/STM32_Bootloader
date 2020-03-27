@@ -10,12 +10,16 @@
  ****V0.1.4***
  *   1. Get_Version cmd added
  *   2. jump cmd fixed for f103 mcu
+  ****V0.1.5***
+ *   1. auto baud detection added
+ *   2. bootloader size changed to 16K from 32K
  */
 
 
 #include "bootloader.h"
 #include "string.h"
 #include "stdlib.h"
+#include "usart.h"
 #include "main.h"
 
 /**
@@ -30,10 +34,10 @@
 
 #define BL_VERSION_MAJOR (0)
 #define BL_VERSION_MINOR (1)
-#define BL_VERSION_BUILD (4)
+#define BL_VERSION_BUILD (5)
 
 #define BL_ENABLE_CRC 1
-#define BL_DEBUG      1
+#define BL_DEBUG      0
 
 
 
@@ -41,16 +45,16 @@
 #include "stm32f1xx_hal.h"
 /**
  *  STM32F103RE -- 512KB total flash.
- *  Bootloader resides in pages 0,1--15  2KB*16 Flash.
+ *  Bootloader resides in pages 0,1--7 2KB*8 Flash.
  *  Total pages in 103RE are 256.
- *  pages to erase 16 to 255, except pages 0 to 15 (bootloader).
+ *  pages to erase 8 to 255, except pages 0 to 7 (bootloader).
  *  Erase type- pages.
  *  Programaing voltage- 2.7v to 3.3v.
  *  Flash writing width - double word.
  */
-#define BL_PAGE_SIZE 2048  // 2KB
-#define BL_TOTAL_PAGES 255 // 255*2KB
-#define BL_USED_PAGES 16   // 16*2KB
+#define BL_PAGE_SIZE (2*1024)  // 2KB
+#define BL_TOTAL_PAGES 255     // 255*2KB
+#define BL_USED_PAGES 8       // 8*2KB
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_PAGES * BL_PAGE_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 512 * 1024)
@@ -61,19 +65,19 @@
 #include "stm32f4xx_hal.h"
 /**
  *  STM32F401RE -- 512KB total flash.
- *  Bootloader resides in sector 0,1 -- 16KB + 16KB Flash.
+ *  Bootloader resides in sector 0 -- 16KB Flash.
  *  Total sectors in 401RE are 8.
- *  Sectors to erase 6, except sector 0,1 (bootloader).
+ *  Sectors to erase 7, except sector 0 (bootloader).
  *  Erase type- sector by sector.
  *  Programaing voltage- 2.7v to 3.3v.
  *  Flash writing width - byte by byte for 2.7v to 3.3v.
  */
 #define BL_SECTOR_SIZE (16 * 1024) //16KB
 #define BL_TOTAL_SECTORS 8		   // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB
-#define BL_USED_SECTORS 2		   // 16KB + 16KB
+#define BL_USED_SECTORS 1		   // 16KB
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
-#define USER_FLASH_END_ADDRESS (0x08000000 + 512 * 1024) // 32KB used by bootloader remaing 480K
+#define USER_FLASH_END_ADDRESS (0x08000000 + 512 * 1024)
 
 #endif
 
@@ -81,16 +85,16 @@
 #include "stm32f4xx_hal.h"
 /**
  *  STM32F407xx -- 1024K total flash.
- *  Bootloader resides in sector 0,1 -- 16KB + 16KB Flash.
+ *  Bootloader resides in sector 0 -- 16KB Flash.
  *  Total sectors in 407VG are 12.
- *  Sectors to erase 10, except sector 0,1 (bootloader).
+ *  Sectors to erase 11, except sector 0 (bootloader).
  *  Erase type- sector by sector.
  *  Programaing voltage- 2.7v to 3.3v.
  *  Flash writing width - byte by byte for 2.7v to 3.3v.
  */
 #define BL_SECTOR_SIZE (16 * 1024) //16KB
 #define BL_TOTAL_SECTORS 12		   // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB...128KB
-#define BL_USED_SECTORS 2		   // 16KB + 16KB
+#define BL_USED_SECTORS 1		   // 16KB
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 1024 * 1024) // 32KB used by bootloader remaing
@@ -130,6 +134,8 @@ CMD_ERASE, CMD_RESET, CMD_JUMP, CMD_GETVER Frame
 
 #define BL_SYNC_CHAR  '$'
 
+/* used for auto baud detection ST AN4908*/
+#define BL_CMD_CONNECT  0x7F
 
 #define BL_RX_BUFFER_SIZE (256)
 #define BL_TX_BUFFER_SIZE (256)
@@ -144,8 +150,8 @@ CMD_ERASE, CMD_RESET, CMD_JUMP, CMD_GETVER Frame
  * @defgroup Bootloader_extern_Variables
  * @{
  */
-/* uart used for bootloader*/
-extern UART_HandleTypeDef huart2;
+
+
  /**
   * @}
   *//* End of Bootloader_extern_Variables */
@@ -164,6 +170,9 @@ static uint8_t BL_Version[3] = {BL_VERSION_MAJOR,BL_VERSION_MINOR,BL_VERSION_BUI
 
 static uint8_t BL_RX_Buffer[BL_RX_BUFFER_SIZE];
 static uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
+
+static volatile uint8_t BL_UART_RX_INT_Count;
+static volatile uint32_t Elapsed_Ticks;
 
 /* Maxim APPLICATION NOTE 27 */
 
@@ -482,7 +491,7 @@ static void BL_Jump_Callback()
 
     __disable_irq();
     HAL_DeInit();
-    HAL_UART_MspDeInit(BL_UART);
+    HAL_UART_DeInit(BL_UART);
 
     stack_pointer = *(__IO uint32_t*) USER_FLASH_START_ADDRESS;
     reset_vector = *(__IO uint32_t*) (USER_FLASH_START_ADDRESS + 4);
@@ -519,12 +528,73 @@ static void BL_Get_Version_Callback()
 
     }
 
+void BL_UART_RX_INT_Reset(void)
+    {
+    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
+    }
+void BL_UART_RX_INT_Init(void)
+    {
+
+    GPIO_InitTypeDef GPIO_InitStruct = {0};
+
+    /* GPIO Ports Clock Enable */
+    __HAL_RCC_GPIOA_CLK_ENABLE();
+
+    /*Configure GPIO pin : PA3 */
+    GPIO_InitStruct.Pin = GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /* EXTI interrupt init*/
+    HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+    }
+
 /**
  * @brief bootloader main process loop
  **/
 
 static void BL_Loop()
     {
+
+    /* auto baud detection ST AN4908*/
+
+    /* temporarily suspend systick interrupt*/
+    HAL_SuspendTick();
+
+    /* temporarily deinit uart*/
+    HAL_UART_DeInit(BL_UART);
+
+    /* temporarily enable rising edge interrupt on uart rx pin*/
+    BL_UART_RX_INT_Init();
+
+    /* wait for two rising edge interrupts on uart rx pin*/
+    while (BL_UART_RX_INT_Count < 2);
+
+    float elapsed_time = (float) (0xFFFFFF - Elapsed_Ticks) / (HAL_RCC_GetHCLKFreq() / 1000000);
+    float bit_time = elapsed_time / 8;
+    uint32_t baud = 1000000 / bit_time;
+
+    /* reset uart rx pin*/
+    BL_UART_RX_INT_Reset();
+
+    HAL_SYSTICK_Config(0x00);
+
+    HAL_ResumeTick();
+
+    /* update baud rate*/
+    BL_UART->Init.BaudRate = baud;
+
+    /* init uart with new baud*/
+    if (HAL_UART_Init(&huart2) != HAL_OK)
+    {
+      Error_Handler();
+    }
+
+    /* send ack for connect cmd*/
+    BL_UART_Send_Char(BL_CMD_ACK);
 
     while (1)
 	{
@@ -536,6 +606,13 @@ static void BL_Loop()
 	    {
 
 	    uint8_t sync_char = BL_RX_Buffer[0];
+
+	    /* if BL_CMD_CONNECT received again send ack*/
+	    /* can be used to test connection*/
+	    if (sync_char == BL_CMD_CONNECT)
+		{
+		 BL_UART_Send_Char(BL_CMD_ACK);
+		}
 
 	    if (sync_char == BL_SYNC_CHAR)
 		{
@@ -641,6 +718,32 @@ void BL_Main()
     /* else jump to application */
     BL_Jump_Callback();
 
+    }
+
+
+
+/**
+ * @brief This function handles uart rx pin interrupt.
+ */
+void EXTI3_IRQHandler(void)
+    {
+    /* USER CODE BEGIN EXTI3_IRQn 0 */
+    if (BL_UART_RX_INT_Count == 0)
+	{
+	/* reset systic, systick is down counter*/
+	HAL_SYSTICK_Config(0xFFFFFF);
+	BL_UART_RX_INT_Count++;
+	}
+    else
+	{
+	Elapsed_Ticks = SysTick->VAL;
+	BL_UART_RX_INT_Count++;
+	}
+    /* USER CODE END EXTI3_IRQn 0 */
+    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
+    /* USER CODE BEGIN EXTI3_IRQn 1 */
+
+    /* USER CODE END EXTI3_IRQn 1 */
     }
 
 /**
