@@ -38,7 +38,7 @@
 
 #define BL_ENABLE_CRC  1
 #define BL_DEBUG       1
-#define BL_AUTO_BAUD   0
+#define BL_AUTO_BAUD   1
 
 #define BL_BAUD        1000000
 
@@ -581,7 +581,8 @@ static void BL_Loop()
     /* reset uart rx pin*/
     BL_UART_RX_INT_Reset();
 
-    HAL_SYSTICK_Config(0x00);
+    /* reconfigure systick to generate 1ms interrupt*/
+    HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq() / 1000);
 
     HAL_ResumeTick();
 
@@ -735,7 +736,8 @@ void EXTI3_IRQHandler(void)
     if (BL_UART_RX_INT_Count == 0)
 	{
 	/* reset systic, systick is down counter*/
-	HAL_SYSTICK_Config(0xFFFFFF);
+	SysTick->LOAD = 0xFFFFFF - 1;
+	SysTick->VAL = 0;
 	BL_UART_RX_INT_Count++;
 	}
     else
