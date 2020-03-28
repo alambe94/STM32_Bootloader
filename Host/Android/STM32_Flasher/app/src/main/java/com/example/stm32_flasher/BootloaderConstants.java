@@ -4,8 +4,8 @@ import java.util.UUID;
 
 public final class BootloaderConstants {
 
-    public static final int STM32_FLASH_START = 0x08008000;
-    public static final int STM32_FLASH_SIZE = 480000;
+    public static final int STM32_FLASH_START = 0x08004000;
+    public static final int STM32_FLASH_SIZE = 496000;
 
     public static final int MESSAGE_LOG = 11;
     public static final int MESSAGE_PROGRESS_BAR = 12;
