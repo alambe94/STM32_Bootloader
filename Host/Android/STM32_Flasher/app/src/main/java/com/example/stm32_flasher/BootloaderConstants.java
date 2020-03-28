@@ -23,6 +23,8 @@ public final class BootloaderConstants {
 
     public static final byte CMD_HELP = 0x40;
 
+    public static final byte CMD_CONNECT = 0x7F;
+
     public static final byte SYNC_CHAR = '$';
 
 

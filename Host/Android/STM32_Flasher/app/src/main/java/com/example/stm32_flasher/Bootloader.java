@@ -43,7 +43,7 @@ public class Bootloader extends Thread {
                 e.printStackTrace();
             }
 
-            if (isCmdRunning) {
+            if (isCmdRunning && stm32Connect()) {
 
                 switch (cmdToRun) {
                     case BootloaderConstants.CMD_RESET:
@@ -126,6 +126,23 @@ public class Bootloader extends Thread {
         return reply == BootloaderConstants.CMD_ACK;
 
     }
+
+    private boolean stm32Connect() {
+
+        byte[] temp = new byte[1];
+
+        temp[0] = BootloaderConstants.CMD_CONNECT;
+        write(temp, 1);
+
+        if (stm32ReadACK(1000)) {
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "connected to stm32 device\n").sendToTarget();
+            return true;
+        } else {
+            mHandler.obtainMessage(BootloaderConstants.MESSAGE_LOG, "connection to stm32 device failed\n").sendToTarget();
+            return false;
+        }
+    }
+
 
     private void stm32Erase() {
 
