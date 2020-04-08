@@ -584,7 +584,7 @@ int main(int argc, char *argv[])
       {
          printf("connected to stm32 device\n");
 
-         if (strncmp(cmd, "write", strlen("write")) == 0)
+         if (strncmp(cmd, "write", strnlen("write", 10)) == 0)
          {
             if (argc >= 5)
             {
@@ -597,27 +597,27 @@ int main(int argc, char *argv[])
                printf("please enter input file\n");
             }
          }
-         else if (strncmp(cmd, "erase", strlen("erase")) == 0)
+         else if (strncmp(cmd, "erase", strnlen("erase", 10)) == 0)
          {
             stm32_erase();
          }
-         else if (strncmp(cmd, "reset", strlen("reset")) == 0)
+         else if (strncmp(cmd, "reset", strnlen("reset", 10)) == 0)
          {
             stm32_reset();
          }
-         else if (strncmp(cmd, "jump", strlen("jump")) == 0)
+         else if (strncmp(cmd, "jump", strnlen("jump", 10)) == 0)
          {
             stm32_jump();
          }
-         else if (strncmp(cmd, "help", strlen("help")) == 0)
+         else if (strncmp(cmd, "help", strnlen("help", 10)) == 0)
          {
             stm32_get_help();
          }
-         else if (strncmp(cmd, "read", strlen("read")) == 0)
+         else if (strncmp(cmd, "read", strnlen("read", 10)) == 0)
          {
             stm32_read_flash();
          }
-         else if (strncmp(cmd, "verify", strlen("verify")) == 0)
+         else if (strncmp(cmd, "verify", strnlen("verify", 10)) == 0)
          {
             if (argc >= 5)
             {
