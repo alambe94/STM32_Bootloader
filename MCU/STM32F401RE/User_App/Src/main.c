@@ -94,7 +94,7 @@ int main(void)
 #if(FLASH_BASE != 0x08004000UL)
 #error "bootloader is enable, must adjust FLASH_BASE in stm32f401xe.h"\
        "also update linker script STM32F401RETX_FLASH.ld accordingly "\
-       "0x08008000UL for 32K of bootloader size"
+       "0x08008000UL for 32K of bootloader size"\
        "0x08004000UL for 16K of bootloader size"
 #endif
 

@@ -96,6 +96,7 @@ def stm32_send_ack():
 
 
 def stm32_read_line():
+    
     rx_string = Serial_Port.readline().decode('utf-8')
     return rx_string
 
@@ -414,6 +415,7 @@ def stm32_verify(bin_file):
     if(f_file_exist):
         bin_file_data.close()
         print("closing file")
+
 
 def main():
 
