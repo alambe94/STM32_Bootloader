@@ -5,7 +5,7 @@ import time
 
 
 USER_APP_ADDRESS = 0x08004000
-FLASH_SIZE = 496000 #+512000 #uncomment for 407VG
+FLASH_SIZE = 496000  # +512000 #uncomment for 407VG
 Serial_Port = ""
 
 """
@@ -67,7 +67,8 @@ CRC8_Table = [
 ]
 
 
-millis = lambda: int(round(time.time() * 1000))
+def millis(): return int(round(time.time() * 1000))
+
 
 def CRC8(data, count):
     crc = 0
@@ -96,7 +97,7 @@ def stm32_send_ack():
 
 
 def stm32_read_line():
-    
+
     rx_string = Serial_Port.readline().decode('utf-8')
     return rx_string
 
@@ -215,10 +216,10 @@ def stm32_read_flash():
             if(crc_recvd == crc_calc):
 
                 rcvd_file += rcvd_packet
-                print("flash read succsess at " + hex(stm32_app_address))
+                #print("read write success at " + hex(stm32_app_address))
                 remaining_bytes -= read_block_size
                 stm32_app_address += read_block_size
-                print("remaining bytes:{}".format(remaining_bytes))
+                print("\rremaining bytes:{}".format(remaining_bytes), end='')
 
             else:
                 print("crc mismatch")
@@ -245,8 +246,6 @@ def stm32_read_flash():
             elapsed_time = millis() - start
             print("elapsed time = {}ms".format(int(elapsed_time)))
             print("read speed = {}kB/S".format(int(file_size/elapsed_time)))
-
-
 
 
 def stm32_write(bin_file):
@@ -313,14 +312,15 @@ def stm32_write(bin_file):
         Serial_Port.write(bl_packet)
 
         if(stm32_read_ack()):
-            print("flash write success at " + hex(stm32_app_address))
+            #print("flash write success at " + hex(stm32_app_address))
+            pass
         else:
             print("flash write error at " + hex(stm32_app_address))
             break
 
         remaining_bytes -= write_block_size
         stm32_app_address += write_block_size
-        print("remaining bytes:{}".format(remaining_bytes))
+        print("\rremaining bytes:{}".format(remaining_bytes), end='')
 
         if(remaining_bytes == 0):
             print("flash write successfull, jolly good!!!!")
@@ -397,14 +397,15 @@ def stm32_verify(bin_file):
         Serial_Port.write(bl_packet)
 
         if(stm32_read_ack()):
-            print("verify write success at " + hex(stm32_app_address))
+            #print("verify write success at " + hex(stm32_app_address))
+            Pass
         else:
             print("verify write error at " + hex(stm32_app_address))
             break
 
         remaining_bytes -= write_block_size
         stm32_app_address += write_block_size
-        print("remaining bytes:{}".format(remaining_bytes))
+        print("\rremaining bytes:{}".format(remaining_bytes), end='')
 
         if(remaining_bytes == 0):
             print("verify write successfull, jolly good!!!!")
@@ -428,7 +429,7 @@ def main():
 
         port = sys.argv[1]
         baud = int(sys.argv[2])
-        cmd  = sys.argv[3]
+        cmd = sys.argv[3]
 
         try:
             Serial_Port = serial.Serial(port, baud, timeout=1)
@@ -452,7 +453,7 @@ def main():
                 if len(sys.argv) >= 5:
                     bin_file = sys.argv[4]
                     stm32_write(bin_file)
-                    #stm32_jump()
+                    # stm32_jump()
                 else:
                     print("please enter input file")
             elif(cmd == "erase"):
@@ -482,4 +483,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
