@@ -52,8 +52,8 @@
  *  Flash writing width - double word.
  */
 #define BL_PAGE_SIZE (2 * 1024) // 2KB
-#define BL_TOTAL_PAGES 255		// 255*2KB
-#define BL_USED_PAGES 8			// 8*2KB
+#define BL_TOTAL_PAGES 255      // 255*2KB
+#define BL_USED_PAGES 8         // 8*2KB
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_PAGES * BL_PAGE_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 512 * 1024)
@@ -72,8 +72,8 @@
  *  Flash writing width - byte by byte for 2.7v to 3.3v.
  */
 #define BL_SECTOR_SIZE (16 * 1024) //16KB
-#define BL_TOTAL_SECTORS 8		   // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB
-#define BL_USED_SECTORS 1		   // 16KB
+#define BL_TOTAL_SECTORS 8         // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB
+#define BL_USED_SECTORS 1          // 16KB
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 512 * 1024)
@@ -92,8 +92,8 @@
  *  Flash writing width - byte by byte for 2.7v to 3.3v.
  */
 #define BL_SECTOR_SIZE (16 * 1024) //16KB
-#define BL_TOTAL_SECTORS 12		   // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB...128KB
-#define BL_USED_SECTORS 1		   // 16KB
+#define BL_TOTAL_SECTORS 12        // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB...128KB
+#define BL_USED_SECTORS 1          // 16KB
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 1024 * 1024) // 32KB used by bootloader remaing
@@ -167,7 +167,7 @@ static uint8_t BL_RX_Buffer[BL_RX_BUFFER_SIZE];
 static uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
 
 static volatile uint8_t BL_UART_RX_INT_Count;
-static volatile uint32_t Elapsed_Ticks;
+static volatile uint32_t Tick_Value;
 
 /* Maxim APPLICATION NOTE 27 */
 
@@ -314,13 +314,11 @@ static void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t le
 
     if (address >= USER_FLASH_START_ADDRESS && address <= USER_FLASH_END_ADDRESS - len)
     {
-
         /* Unlock the Flash to enable the flash control register access *************/
         HAL_FLASH_Unlock();
 
         for (uint32_t i = 0; i < len; i++)
         {
-
             if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, address, *sram_ptr) == HAL_OK)
             {
                 /* Check the written value */
@@ -396,7 +394,6 @@ static void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t le
     }
     else
     {
-
         BL_UART_Send_Char(BL_CMD_NACK);
     }
 }
@@ -461,7 +458,6 @@ static void BL_Reset_Callback()
  **/
 static void BL_Jump_Callback()
 {
-
     uint32_t reset_vector = 0;
     uint32_t stack_pointer = 0;
 
@@ -493,7 +489,6 @@ static void BL_Jump_Callback()
  **/
 static void BL_Get_Version_Callback()
 {
-
     uint8_t crc;
 
     BL_UART_Send_Char(BL_CMD_ACK);
@@ -551,9 +546,7 @@ static void BL_Loop()
     while (BL_UART_RX_INT_Count < 2)
         ;
 
-    float elapsed_time = (float)(0xFFFFFF - Elapsed_Ticks) / (float)(HAL_RCC_GetHCLKFreq() / 1000000);
-    float bit_time = elapsed_time / 8;
-    uint32_t baud = 1000000 / bit_time;
+    uint32_t baud = (8 * HAL_RCC_GetHCLKFreq()) / (0xFFFFFF - Tick_Value + 1);
 
     /* reset uart rx pin*/
     BL_UART_RX_INT_Reset();
@@ -695,13 +688,13 @@ void EXTI3_IRQHandler(void)
     if (BL_UART_RX_INT_Count == 0)
     {
         /* reset systic, systick is down counter*/
-        SysTick->LOAD = 0xFFFFFF - 1;
+        SysTick->LOAD = 0xFFFFFF;
         SysTick->VAL = 0;
         BL_UART_RX_INT_Count++;
     }
     else
     {
-        Elapsed_Ticks = SysTick->VAL;
+        Tick_Value = SysTick->VAL;
         BL_UART_RX_INT_Count++;
     }
     /* USER CODE END EXTI3_IRQn 0 */
