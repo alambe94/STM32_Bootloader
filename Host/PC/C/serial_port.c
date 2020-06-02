@@ -4,11 +4,10 @@
 
 SERIAL_HANDLE Serial_Port_Config(uint8_t *port, uint32_t baud)
 {
-
 SERIAL_HANDLE hComm;                             // Handle to the Serial port
 COMMTIMEOUTS timeouts = {0};
 DCB dcbSerialParams = {0};                       // Initializing DCB structure
-                               
+
 hComm = CreateFile(port,                         // Name of the Port to be Opened
                    GENERIC_READ | GENERIC_WRITE, // Read/Write Access
                    0,                            // No Sharing, ports cant be shared
@@ -17,11 +16,11 @@ hComm = CreateFile(port,                         // Name of the Port to be Opene
                    0,                            // Non Overlapped I/O
                    NULL);                        // Null for Comm Devices
 
-dcbSerialParams.BaudRate = baud;                 // Setting BaudRate 
+dcbSerialParams.BaudRate = baud;                 // Setting BaudRate
 dcbSerialParams.ByteSize = 8;                    // Setting ByteSize = 8
 dcbSerialParams.StopBits = ONESTOPBIT;           // Setting StopBits = 1
 dcbSerialParams.Parity = NOPARITY;               // Setting Parity = None
-SetCommState(hComm, &dcbSerialParams);  //Configuring the port according to settings in DCB
+SetCommState(hComm, &dcbSerialParams);           //Configuring the port according to settings in DCB
 
 
 timeouts.ReadIntervalTimeout = 100;
@@ -51,7 +50,7 @@ uint32_t Serial_Port_Write(SERIAL_HANDLE hComm, uint8_t *str, uint32_t len)
 uint32_t Serial_Port_Read(SERIAL_HANDLE hComm, uint8_t *buf, uint32_t len)
 {
 
-DWORD bytes_count = 0;                    // No of bytes read from the port   
+DWORD bytes_count = 0;                    // No of bytes read from the port
 
 ReadFile(hComm, buf, len, &bytes_count, NULL);
 
@@ -65,7 +64,6 @@ void Serial_Port_Close(SERIAL_HANDLE hComm)
 
 void Serial_Port_Timeout(SERIAL_HANDLE hComm, uint32_t len)
 {
-
     COMMTIMEOUTS timeouts = {0};
     GetCommTimeouts(hComm, &timeouts);
 
@@ -78,7 +76,6 @@ void Serial_Port_Timeout(SERIAL_HANDLE hComm, uint32_t len)
 
 SERIAL_HANDLE Serial_Port_Config(uint8_t *port, uint32_t baud)
 {
-
     SERIAL_HANDLE fd;   /* File Descriptor */
     struct termios tty; /* Create the structure */
 
@@ -146,7 +143,6 @@ SERIAL_HANDLE Serial_Port_Config(uint8_t *port, uint32_t baud)
 
 uint32_t Serial_Port_Write(SERIAL_HANDLE fd, uint8_t *str, uint32_t len)
 {
-
 uint32_t bytes_count = 0;                   // No of bytes written to the port
 
 bytes_count = write(fd, str, len);
@@ -156,9 +152,8 @@ return bytes_count;
 
 uint32_t Serial_Port_Read(SERIAL_HANDLE fd, uint8_t *buf, uint32_t len)
 {
-
     uint32_t bytes_count = -1; // No of bytes read from the port
-    
+
     bytes_count = read(fd, buf, 1);
 
     return bytes_count;
@@ -171,7 +166,6 @@ void Serial_Port_Close(SERIAL_HANDLE fd)
 
 void Serial_Port_Timeout(SERIAL_HANDLE fd, uint32_t len)
 {
-
     struct termios tty;
 
     tcgetattr(fd, &tty);

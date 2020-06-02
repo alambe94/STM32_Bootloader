@@ -54,14 +54,13 @@ uint8_t Open_Serial_port(char *port, uint32_t baud)
 {
    uint8_t status = 1;
    Serial_Handle = Serial_Port_Config(port, baud);
+
 #ifdef _WIN32
    if (Serial_Handle == INVALID_HANDLE_VALUE)
    {
       status = 0;
    }
-#endif
-
-#ifdef __linux__
+#elif __linux__
    if (Serial_Handle == -1)
    {
       status = 0;
@@ -597,27 +596,27 @@ int main(int argc, char *argv[])
                printf("please enter input file\n");
             }
          }
-         else if (strncmp(cmd, "erase", strnlen("erase", 10)) == 0)
+         else if (strncmp(cmd, "erase", 10) == 0)
          {
             stm32_erase();
          }
-         else if (strncmp(cmd, "reset", strnlen("reset", 10)) == 0)
+         else if (strncmp(cmd, "reset", 10) == 0)
          {
             stm32_reset();
          }
-         else if (strncmp(cmd, "jump", strnlen("jump", 10)) == 0)
+         else if (strncmp(cmd, "jump", 10) == 0)
          {
             stm32_jump();
          }
-         else if (strncmp(cmd, "help", strnlen("help", 10)) == 0)
+         else if (strncmp(cmd, "help", 10) == 0)
          {
             stm32_get_help();
          }
-         else if (strncmp(cmd, "read", strnlen("read", 10)) == 0)
+         else if (strncmp(cmd, "read", 10) == 0)
          {
             stm32_read_flash();
          }
-         else if (strncmp(cmd, "verify", strnlen("verify", 10)) == 0)
+         else if (strncmp(cmd, "verify", 10) == 0)
          {
             if (argc >= 5)
             {
