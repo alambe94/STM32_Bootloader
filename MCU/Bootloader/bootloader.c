@@ -57,7 +57,25 @@
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_PAGES * BL_PAGE_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 512 * 1024)
+#endif
 
+#ifdef STM32F103xB
+#include "stm32f1xx_hal.h"
+/**
+ *  STM32F103C8 -- 64KB total flash.
+ *  Bootloader resides in pages 0,1--7 1KB*8 Flash.
+ *  Total pages in 103C* are 64.
+ *  pages to erase 8 to 64, except pages 0 to 7 (bootloader).
+ *  Erase type- pages.
+ *  Programaing voltage- 2.7v to 3.3v.
+ *  Flash writing width - double word.
+ */
+#define BL_PAGE_SIZE (1 * 1024) // 1KB
+#define BL_TOTAL_PAGES 64       // 64*1KB
+#define BL_USED_PAGES 8         // 8*1KB
+
+#define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_PAGES * BL_PAGE_SIZE)
+#define USER_FLASH_END_ADDRESS (0x08000000 + 64 * 1024)
 #endif
 
 #ifdef STM32F401xE
@@ -77,7 +95,6 @@
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 512 * 1024)
-
 #endif
 
 #ifdef STM32F407xx
@@ -97,7 +114,6 @@
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 1024 * 1024) // 32KB used by bootloader remaing
-
 #endif
 
 /*
@@ -251,12 +267,12 @@ static uint8_t ST_Erase_Flash()
 
     FLASH_EraseInitTypeDef flash_erase_handle;
 
-#ifdef STM32F103xE
+#if defined(STM32F103xE) || defined(STM32F103xB)
     flash_erase_handle.TypeErase = FLASH_TYPEERASE_PAGES;
     flash_erase_handle.Banks = FLASH_BANK_1;
     flash_erase_handle.NbPages = (BL_TOTAL_PAGES - BL_USED_PAGES);
     flash_erase_handle.PageAddress = USER_FLASH_START_ADDRESS;
-#else
+#elif defined(STM32F407xx) || defined(STM32F401xE)
     flash_erase_handle.TypeErase = FLASH_TYPEERASE_SECTORS;
     flash_erase_handle.Banks = FLASH_BANK_1;
     flash_erase_handle.Sector = BL_USED_SECTORS;
