@@ -1,8 +1,8 @@
 /**
  * @file bootloader.c
  * @brief Implements bootloader control commands
- * @author github (www.github.com)
- * @version 0.0.0
+ * @author xyz
+ * @version 0.1.6
  **/
 
 /**
@@ -10,9 +10,12 @@
  ****V0.1.4***
  *   1. Get_Version cmd added
  *   2. jump cmd fixed for f103 mcu
-  ****V0.1.5***
+ *****V0.1.5***
  *   1. auto baud detection added
  *   2. bootloader size changed to 16K from 32K
+ *****V0.1.6***
+ *   1. memory map for stm32f103c8
+ *   2. bootloader size depends upon MCU
  */
 
 #include "bootloader.h"
@@ -33,7 +36,7 @@
 
 #define BL_VERSION_MAJOR (0)
 #define BL_VERSION_MINOR (1)
-#define BL_VERSION_BUILD (5)
+#define BL_VERSION_BUILD (6)
 
 #define BL_DEBUG 1
 #define BL_AUTO_BAUD 1
