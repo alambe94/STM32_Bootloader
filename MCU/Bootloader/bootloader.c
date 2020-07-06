@@ -1,9 +1,9 @@
 /**
  * @file bootloader.c
  * @brief Implements bootloader control commands
- * @author xyz
- * @version 0.1.6
- **/
+ * @author github (www.github.com)
+ * @version 0.0.0
+ */
 
 /**
  * Change Log
@@ -13,14 +13,19 @@
  *****V0.1.5***
  *   1. auto baud detection added
  *   2. bootloader size changed to 16K from 32K
- *****V0.1.6***
- *   1. memory map for stm32f103c8
- *   2. bootloader size depends upon MCU
- */
+ ******V0.1.6***
+ *   1. independent comm ineterface from bootloader
+ *   2. usb cdc interface
+ * */
 
+/** stdandard includes */
+#include <string.h>
+#include <stdlib.h>
+
+/** booloader includes */
 #include "bootloader.h"
-#include "string.h"
-#include "stdlib.h"
+#include "comm_interface.h"
+
 #include "usart.h"
 #include "main.h"
 
@@ -39,9 +44,12 @@
 #define BL_VERSION_BUILD (6)
 
 #define BL_DEBUG 1
-#define BL_AUTO_BAUD 1
 
-#define BL_BAUD 1000000
+#define BL_RX_BUFFER_SIZE (256)
+#define BL_TX_BUFFER_SIZE (256)
+
+static uint8_t BL_RX_Buffer[BL_RX_BUFFER_SIZE];
+static uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
 
 #ifdef STM32F103xE
 #include "stm32f1xx_hal.h"
@@ -154,9 +162,6 @@ CMD_ERASE, CMD_RESET, CMD_JUMP, CMD_GETVER Frame
 /* used for auto baud detection ST AN4908*/
 #define BL_CMD_CONNECT 0x7F
 
-#define BL_RX_BUFFER_SIZE (256)
-#define BL_TX_BUFFER_SIZE (256)
-
 /**
  * @}
  */
@@ -173,23 +178,15 @@ CMD_ERASE, CMD_RESET, CMD_JUMP, CMD_GETVER Frame
 /* End of Bootloader_extern_Variables */
 
 /**
-  * @defgroup Bootloader_Gloabl_Variables
+  * @defgroup Bootloader_Global_Variables
   * @{
   */
-static UART_HandleTypeDef *BL_UART = &huart2;
 
 /* bootloader version number */
 /* Major, minor, build  eg 0.1.2*/
 static uint8_t BL_Version[3] = {BL_VERSION_MAJOR, BL_VERSION_MINOR, BL_VERSION_BUILD};
 
-static uint8_t BL_RX_Buffer[BL_RX_BUFFER_SIZE];
-static uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
-
-static volatile uint8_t BL_UART_RX_INT_Count;
-static volatile uint32_t Tick_Value;
-
 /* Maxim APPLICATION NOTE 27 */
-
 uint8_t BL_CRC8_Table[] =
     {
         0x00, 0x5E, 0xBC, 0xE2, 0x61, 0x3F, 0xDD, 0x83, 0xC2, 0x9C, 0x7E, 0x20, 0xA3, 0xFD, 0x1F, 0x41,
@@ -212,24 +209,30 @@ uint8_t BL_CRC8_Table[] =
 /**
  * @}
  */
-/* End of Bootloader_Gloabl_Variables */
+/* End of Bootloader_Global_Variables */
 
 /**
  * @defgroup Bootloader_Function_Protypes
  * @{
  */
 
-static uint8_t ST_Erase_Flash();
+static uint8_t ST_Erase_Flash(void);
 static uint8_t BL_CRC8(uint8_t *data, uint8_t len);
-static void BL_UART_Send_Char(char data);
-static void BL_UART_Send_String(char *data);
 static void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t len);
 static void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t len);
 static void BL_Read_Callback(uint32_t address, uint32_t len);
-static void BL_Erase_Callback();
-static void BL_Jump_Callback();
-static void BL_Get_Version_Callback();
-static void BL_Loop();
+static void BL_Erase_Callback(void);
+static void BL_Jump_Callback(void);
+static void BL_Get_Version_Callback(void);
+static void BL_Loop(void);
+
+static void (*BL_COMM_Deinit)(void);
+
+static void (*BL_Send_Char)(char data);
+static void (*BL_Send_Chars)(char *data, uint32_t count);
+
+static int (*BL_Get_Char)(uint32_t timeout);
+static int (*BL_Get_Chars)(uint8_t *buffer, uint32_t count, uint32_t timeout);
 
 /**
  * @}
@@ -246,7 +249,7 @@ static void BL_Loop();
  * @param data input buffer
  * @param len number of bytes in input buffer
  * @retval return calculated crc
- **/
+ */
 static uint8_t BL_CRC8(uint8_t *data, uint8_t len)
 {
     uint8_t crc = 0;
@@ -262,8 +265,8 @@ static uint8_t BL_CRC8(uint8_t *data, uint8_t len)
 /**
  * @brief earse stm32 flash
  * @note erase mode depends upon mcu family
- **/
-static uint8_t ST_Erase_Flash()
+ */
+static uint8_t ST_Erase_Flash(void)
 {
     uint8_t status = 0;
     uint32_t error = 0;
@@ -296,35 +299,11 @@ static uint8_t ST_Erase_Flash()
 }
 
 /**
- * @brief send character over uart
- * @param data char to be sent
- **/
-static void BL_UART_Send_Char(char data)
-{
-    BL_UART->Instance->DR = data;
-    while (__HAL_UART_GET_FLAG(BL_UART, UART_FLAG_TC) == 0)
-        ;
-}
-
-/**
- * @brief  send string buffer over uart
- * @param data input buffer
- **/
-static void BL_UART_Send_String(char *data)
-{
-    while (*data)
-    {
-        BL_UART_Send_Char(*data);
-        data++;
-    }
-}
-
-/**
  * @brief write data in given flash address
  * @param address address where flash is to be written
  * @param data input data buffer
  * @param len amount of data to be written
- **/
+ */
 static void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t len)
 {
     uint32_t *sram_ptr = (uint32_t *)data;
@@ -333,7 +312,7 @@ static void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t le
 
     if (address >= USER_FLASH_START_ADDRESS && address <= USER_FLASH_END_ADDRESS - len)
     {
-        /* Unlock the Flash to enable the flash control register access *************/
+        /* Unlock the Flash to enable the flash control register access */
         HAL_FLASH_Unlock();
 
         for (uint32_t i = 0; i < len; i++)
@@ -368,11 +347,11 @@ static void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t le
 
     if (status)
     {
-        BL_UART_Send_Char(BL_CMD_ACK);
+        BL_Send_Char(BL_CMD_ACK);
     }
     else
     {
-        BL_UART_Send_Char(BL_CMD_NACK);
+        BL_Send_Char(BL_CMD_NACK);
     }
 }
 
@@ -381,7 +360,7 @@ static void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t le
  * @param address address where flash is to be verified
  * @param data input data buffer
  * @param len amount of data to be writtn
- **/
+ */
 static void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t len)
 {
     uint8_t ok_flag = 1;
@@ -409,19 +388,19 @@ static void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t le
 
     if (ok_flag)
     {
-        BL_UART_Send_Char(BL_CMD_ACK);
+        BL_Send_Char(BL_CMD_ACK);
     }
     else
     {
-        BL_UART_Send_Char(BL_CMD_NACK);
+        BL_Send_Char(BL_CMD_NACK);
     }
 }
 
 /**
- * @brief read data in given flash address and send via uart
+ * @brief read data in given flash address and send
  * @param address address where flash read from
  * @param len number of bytes to be read
- **/
+ */
 static void BL_Read_Callback(uint32_t address, uint32_t len)
 {
     uint8_t crc;
@@ -429,63 +408,66 @@ static void BL_Read_Callback(uint32_t address, uint32_t len)
 
     if (address >= USER_FLASH_START_ADDRESS && address <= USER_FLASH_END_ADDRESS - len)
     {
-        BL_UART_Send_Char(BL_CMD_ACK);
+        BL_Send_Char(BL_CMD_ACK);
 
         for (uint8_t i = 0; i < len; i++)
         {
             BL_TX_Buffer[i] = add_ptr[i];
-            BL_UART_Send_Char(BL_TX_Buffer[i]);
+            BL_Send_Char(BL_TX_Buffer[i]);
         }
 
         crc = BL_CRC8(BL_TX_Buffer, len);
 
-        BL_UART_Send_Char(crc);
+        BL_Send_Char(crc);
     }
     else
     {
-        BL_UART_Send_Char(BL_CMD_NACK);
+        BL_Send_Char(BL_CMD_NACK);
     }
 }
 
 /**
  * @brief earse stm32 flash and ack if success
- **/
-static void BL_Erase_Callback()
+ */
+static void BL_Erase_Callback(void)
 {
     if (ST_Erase_Flash())
     {
-        BL_UART_Send_Char(BL_CMD_ACK);
+        BL_Send_Char(BL_CMD_ACK);
     }
     else
     {
-        BL_UART_Send_Char(BL_CMD_NACK);
+        BL_Send_Char(BL_CMD_NACK);
     }
 }
 
 /**
  * @brief reset stm32 device
- **/
-static void BL_Reset_Callback()
+ */
+static void BL_Reset_Callback(void)
 {
     // reset mcu
-    BL_UART_Send_Char(BL_CMD_ACK);
+    BL_Send_Char(BL_CMD_ACK);
     HAL_NVIC_SystemReset();
 }
 
 /**
  * @brief jump to user application
- **/
-static void BL_Jump_Callback()
+ */
+static void BL_Jump_Callback(void)
 {
     uint32_t reset_vector = 0;
     uint32_t stack_pointer = 0;
 
     void (*pFunction)(void);
 
-    BL_UART_Send_Char(BL_CMD_ACK);
+    BL_Send_Char(BL_CMD_ACK);
 
     HAL_DeInit();
-    HAL_UART_DeInit(BL_UART);
+    /** deinit uart or cdc */
+    BL_COMM_Deinit();
+
+    /** disable interrupts */
     __disable_irq();
 
     stack_pointer = *(__IO uint32_t *)USER_FLASH_START_ADDRESS;
@@ -504,116 +486,55 @@ static void BL_Jump_Callback()
 }
 
 /**
- * @brief send current bootloader version via uart
- **/
-static void BL_Get_Version_Callback()
+ * @brief send current bootloader version
+ */
+static void BL_Get_Version_Callback(void)
 {
     uint8_t crc;
 
-    BL_UART_Send_Char(BL_CMD_ACK);
+    BL_Send_Char(BL_CMD_ACK);
 
     crc = BL_CRC8(BL_Version, 3);
 
-    BL_UART_Send_Char(BL_Version[0]);
-    BL_UART_Send_Char(BL_Version[1]);
-    BL_UART_Send_Char(BL_Version[2]);
-    BL_UART_Send_Char(crc);
-}
-
-void BL_UART_RX_INT_Reset(void)
-{
-    HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
-}
-
-void BL_UART_RX_INT_Init(void)
-{
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-
-    /* GPIO Ports Clock Enable */
-    __HAL_RCC_GPIOA_CLK_ENABLE();
-
-    /*Configure GPIO pin : PA3 */
-    GPIO_InitStruct.Pin = GPIO_PIN_3;
-    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
-    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-    /* EXTI interrupt init*/
-    HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
-    HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+    BL_Send_Char(BL_Version[0]);
+    BL_Send_Char(BL_Version[1]);
+    BL_Send_Char(BL_Version[2]);
+    BL_Send_Char(crc);
 }
 
 /**
  * @brief bootloader main process loop
- **/
+ */
 
-static void BL_Loop()
+static void BL_Loop(void)
 {
-#if (BL_AUTO_BAUD == 1)
-    /* auto baud detection ST AN4908*/
-
-    /* temporarily suspend systick interrupt*/
-    HAL_SuspendTick();
-
-    /* temporarily deinit uart*/
-    HAL_UART_DeInit(BL_UART);
-
-    /* temporarily enable rising edge interrupt on uart rx pin*/
-    BL_UART_RX_INT_Init();
-
-    /* wait for two rising edge interrupts on uart rx pin*/
-    while (BL_UART_RX_INT_Count < 2)
-        ;
-
-    uint32_t baud = (8 * HAL_RCC_GetHCLKFreq()) / (0xFFFFFF - Tick_Value + 1);
-
-    /* reset uart rx pin*/
-    BL_UART_RX_INT_Reset();
-
-    /* reconfigure systick to generate 1ms interrupt*/
-    HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq() / 1000);
-
-    HAL_ResumeTick();
-
-    /* update baud rate*/
-    BL_UART->Init.BaudRate = baud;
-#else
-    BL_UART->Init.BaudRate = BL_BAUD;
-#endif
-
-    /* init uart with new baud*/
-    if (HAL_UART_Init(&huart2) != HAL_OK)
-    {
-        Error_Handler();
-    }
-
     /* send ack for connect cmd*/
-    BL_UART_Send_Char(BL_CMD_ACK);
+    BL_Send_Char(BL_CMD_ACK);
 
     while (1)
     {
         memset(BL_RX_Buffer, 0x00, BL_RX_BUFFER_SIZE);
 
         /* wait for sync char*/
-        if (HAL_UART_Receive(BL_UART, BL_RX_Buffer, 1, HAL_MAX_DELAY) == HAL_OK)
-        {
-            uint8_t sync_char = BL_RX_Buffer[0];
+        uint8_t sync_char = BL_Get_Char(100);
 
+        if (sync_char != -1)
+        {
             /* if BL_CMD_CONNECT received again send ack*/
             /* can be used to test connection*/
             if (sync_char == BL_CMD_CONNECT)
             {
-                BL_UART_Send_Char(BL_CMD_ACK);
+                BL_Send_Char(BL_CMD_ACK);
             }
 
             if (sync_char == BL_SYNC_CHAR)
             {
                 /* wait for packet_len char*/
-                if (HAL_UART_Receive(BL_UART, BL_RX_Buffer, 1, 100) == HAL_OK)
-                {
-                    uint8_t packet_len = BL_RX_Buffer[0];
+                int packet_len = BL_Get_Char(100);
 
-                    if (HAL_UART_Receive(BL_UART, BL_RX_Buffer, packet_len, 5000) == HAL_OK)
+                if (packet_len != -1)
+                {
+                    if (BL_Get_Chars(BL_RX_Buffer, packet_len, 5000) != -1)
                     {
                         uint8_t cmd = BL_RX_Buffer[0];
 
@@ -679,48 +600,46 @@ static void BL_Loop()
 
 /**
  * @brief bootloader entry point
- **/
-void BL_Main()
+ */
+void BL_Main(void)
 {
     HAL_Delay(1);
 
-/* if enabled directly jump to bootloader. */
+/** if enabled directly jump to bootloader. */
 #if (BL_DEBUG == 1)
     BL_Loop();
 #endif
 
-    /* if pin is low enter bootloader*/
+    /** if pin is low enter bootloader */
     if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
     {
+        if (BL_UART_Init())
+        {
+            /** if any activity is detected on uart choose uart interface */
+            BL_COMM_Deinit = BL_UART_Deinit;
+
+            BL_Send_Char = BL_UART_Send_Char;
+            BL_Send_Chars = BL_UART_Send_Chars;
+
+            BL_Get_Char = BL_UART_Get_Char;
+            BL_Get_Chars = BL_UART_Get_Chars;
+        }
+        else
+        {
+            /** choose usb cdc */
+            BL_COMM_Deinit = BL_CDC_Deinit;
+
+            BL_Send_Char = BL_CDC_Send_Char;
+            BL_Send_Chars = BL_CDC_Send_Chars;
+
+            BL_Get_Char = BL_CDC_Get_Char;
+            BL_Get_Chars = BL_CDC_Get_Chars;
+        }
+
         BL_Loop();
     }
-    /* else jump to application */
+    /** else jump to application */
     BL_Jump_Callback();
-}
-
-/**
- * @brief This function handles uart rx pin interrupt.
- */
-void EXTI3_IRQHandler(void)
-{
-    /* USER CODE BEGIN EXTI3_IRQn 0 */
-    if (BL_UART_RX_INT_Count == 0)
-    {
-        /* reset systic, systick is down counter*/
-        SysTick->LOAD = 0xFFFFFF;
-        SysTick->VAL = 0;
-        BL_UART_RX_INT_Count++;
-    }
-    else
-    {
-        Tick_Value = SysTick->VAL;
-        BL_UART_RX_INT_Count++;
-    }
-    /* USER CODE END EXTI3_IRQn 0 */
-    HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_3);
-    /* USER CODE BEGIN EXTI3_IRQn 1 */
-
-    /* USER CODE END EXTI3_IRQn 1 */
 }
 
 /**
