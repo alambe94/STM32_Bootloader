@@ -1,8 +1,8 @@
 /**
  * @file bootloader.c
  * @brief Implements bootloader control commands
- * @author github (www.github.com)
- * @version 0.0.0
+ * @author xyz
+ * @version 0.1.6
  */
 
 /**
