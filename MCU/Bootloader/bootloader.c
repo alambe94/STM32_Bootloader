@@ -2,7 +2,7 @@
  * @file bootloader.c
  * @brief Implements bootloader control commands
  * @author xyz
- * @version 0.1.6
+ * @version 0.1.7
  */
 
 /**
@@ -16,6 +16,8 @@
  ******V0.1.6***
  *   1. independent comm ineterface from bootloader
  *   2. usb cdc interface
+ ******V0.1.7***
+ *   1.using magic number to decide to bootloader
  * */
 
 /** stdandard includes */
@@ -41,9 +43,7 @@
 
 #define BL_VERSION_MAJOR (0)
 #define BL_VERSION_MINOR (1)
-#define BL_VERSION_BUILD (6)
-
-#define BL_DEBUG 1
+#define BL_VERSION_BUILD (7)
 
 #define BL_RX_BUFFER_SIZE (1024)
 #define BL_TX_BUFFER_SIZE (1024)
@@ -121,7 +121,7 @@ static uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
  */
 #define BL_SECTOR_SIZE (16 * 1024) //16KB
 #define BL_TOTAL_SECTORS 12        // 16KB+16KB+16KB+16KB+64KB+128KB+128KB+128KB...128KB
-#define BL_USED_SECTORS 1          // 16KB
+#define BL_USED_SECTORS 2          // 16KB*2
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
 #define USER_FLASH_END_ADDRESS (0x08000000 + 1024 * 1024) // 32KB used by bootloader remaing
@@ -460,14 +460,21 @@ static void BL_Jump_Callback(void)
 
     void (*pFunction)(void);
 
-    BL_Send_Char(BL_CMD_ACK);
+    if (BL_Send_Char)
+    {
+        BL_Send_Char(BL_CMD_ACK);
+    }
 
     HAL_DeInit();
+
     /** deinit uart or cdc */
-    BL_COMM_Deinit();
+#if (USE_USB_CDC)
+    BL_CDC_Deinit();
+#endif
+    BL_UART_Deinit();
 
     /** disable interrupts */
-    __disable_irq();
+    //__disable_irq();
 
     stack_pointer = *(__IO uint32_t *)USER_FLASH_START_ADDRESS;
     reset_vector = *(__IO uint32_t *)(USER_FLASH_START_ADDRESS + 4);
@@ -598,9 +605,24 @@ static void BL_Loop(void)
 void BL_Main(void)
 {
     HAL_Delay(1);
+    uint8_t magic_number;
 
-    /** if pin is low enter bootloader, debug flag is enabled */
-    if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET || BL_DEBUG)
+    /** enable backup register access */
+    __HAL_RCC_PWR_CLK_ENABLE();
+    HAL_PWR_EnableBkUpAccess();
+
+#if defined(STM32F103xE) || defined(STM32F103xB)
+    __HAL_RCC_BKP_CLK_ENABLE();
+    magic_number = BKP->DR1 & 0x0000FFFF;
+    BKP->DR1 = 0x00;
+#elif defined(STM32F407xx) || defined(STM32F401xE)
+    __HAL_RCC_BKPSRAM_CLK_ENABLE();
+    magic_number = *(__IO uint8_t *)0x40024000;
+    *(__IO uint8_t *)0x40024000 = 0x00;
+#endif
+
+    /** if pin is low enter bootloader, magic number is set or debug flag is enabled */
+    if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET || magic_number == 0xA5 || BL_DEBUG)
     {
         BL_UART_Init();
 
@@ -622,7 +644,7 @@ void BL_Main(void)
                 BL_Get_Chars = BL_UART_Get_Chars;
                 break;
             }
-#if(USE_USB_CDC == 1)
+#if (USE_USB_CDC == 1)
             int cdc_char = BL_CDC_Get_Char(100);
             if (cdc_char == BL_CMD_CONNECT)
             {

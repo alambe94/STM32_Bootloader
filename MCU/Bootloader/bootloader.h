@@ -1,6 +1,8 @@
 #ifndef BOOTLOADER_H_
 #define BOOTLOADER_H_
 
+#define BL_DEBUG 0
+
 #ifdef STM32F103xB
 #define USE_USB_CDC 1
 #define BL_AUTO_BAUD 1
