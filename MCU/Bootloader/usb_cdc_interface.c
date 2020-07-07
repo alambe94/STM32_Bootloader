@@ -85,6 +85,7 @@ int BL_CDC_Get_Char(uint32_t timeout)
 /**
  * @brief get character
  * @param timeout
+ * @reval number chaers received
  */
 int BL_CDC_Get_Chars(char *buffer, uint32_t count, uint32_t timeout)
 {

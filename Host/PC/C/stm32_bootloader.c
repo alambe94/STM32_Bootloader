@@ -105,7 +105,6 @@ uint8_t CRC8_Table[] =
 
 uint8_t CRC8(uint8_t *data, uint8_t len)
 {
-
    uint8_t crc = 0;
 
    for (uint8_t i = 0; i < len; i++)
@@ -183,7 +182,6 @@ void stm32_get_help()
 
 void stm32_reset()
 {
-
    stm32_send_cmd(CMD_RESET);
 
    if (stm32_read_ack())
@@ -212,7 +210,6 @@ void stm32_jump()
 
 void stm32_read_flash()
 {
-
    FILE *fp = NULL;
 
    uint32_t start_time = system_current_time_millis();

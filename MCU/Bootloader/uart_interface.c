@@ -56,6 +56,7 @@ int BL_UART_Get_Char(uint32_t timeout)
 /**
  * @brief get character
  * @param timeout
+ * @retval number chars received
  */
 int BL_UART_Get_Chars(char *buffer, uint32_t count, uint32_t timeout)
 {
@@ -64,7 +65,7 @@ int BL_UART_Get_Chars(char *buffer, uint32_t count, uint32_t timeout)
         return count;
     }
 
-    return -1;
+    return 0;
 }
 
 #if (BL_AUTO_BAUD == 1)
