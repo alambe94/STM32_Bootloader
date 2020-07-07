@@ -408,16 +408,16 @@ static void BL_Read_Callback(uint32_t address, uint32_t len)
 
     if (address >= USER_FLASH_START_ADDRESS && address <= USER_FLASH_END_ADDRESS - len)
     {
-        BL_TX_Buffer[0] = BL_CMD_ACK;
+        BL_Send_Char(BL_CMD_ACK);
 
-        for (uint8_t i = 1; i <= len; i++)
+        for (uint8_t i = 0; i < len; i++)
         {
             BL_TX_Buffer[i] = add_ptr[i];
         }
-        crc = BL_CRC8(BL_TX_Buffer + 1, len);
-        BL_TX_Buffer[len + 1] = crc;
+        crc = BL_CRC8(BL_TX_Buffer, len);
+        BL_TX_Buffer[len] = crc;
 
-        BL_Send_Chars((char *)BL_TX_Buffer, len + 2);
+        BL_Send_Chars((char *)BL_TX_Buffer, len + 1);
     }
     else
     {

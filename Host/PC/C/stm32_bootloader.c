@@ -6,8 +6,8 @@
 
 #include "serial_port.h"
 
-#define USER_APP_ADDRESS 0x08004000
-#define FLASH_SIZE 496000 //+ 512000 //uncomment for 407VG
+#define USER_APP_ADDRESS 0x08008000 // 0x08004000->8K, 0x08004000->16k, 0x08008000->32k botloader size
+#define FLASH_SIZE 496000           //+ 512000 //uncomment for 407VG
 
 /*
 CMD_WRITE, CMD_VERIFY Frame
