@@ -4,8 +4,8 @@ import sys
 import time
 
 
-USER_APP_ADDRESS = 0x08004000
-FLASH_SIZE = 496000  # +512000 #uncomment for 407VG
+USER_APP_ADDRESS = 0x08008000  # 0x08004000->8K, 0x08004000 -> 16k, 0x08008000->32k
+FLASH_SIZE = 496000 + 512000  # uncomment for 407VG
 Serial_Port = ""
 
 """
@@ -321,7 +321,7 @@ def stm32_write(bin_file):
         print("\rremaining bytes:{}".format(remaining_bytes), end='')
 
         if(remaining_bytes == 0):
-            print("flash write successfull, jolly good!!!!")
+            print("\nflash write successfull, jolly good!!!!")
             elapsed_time = millis() - start
             print("elapsed time = {}ms".format(int(elapsed_time)))
             print("write speed = {}kB/S".format(int(f_file_size/elapsed_time)))
@@ -406,7 +406,7 @@ def stm32_verify(bin_file):
         print("\rremaining bytes:{}".format(remaining_bytes), end='')
 
         if(remaining_bytes == 0):
-            print("verify write successfull, jolly good!!!!")
+            print("\nverify successfull, jolly good!!!!")
             elapsed_time = millis() - start
             print("elapsed time = {}ms".format(int(elapsed_time)))
             print("verify speed = {}kB/S".format(int(f_file_size/elapsed_time)))
@@ -441,9 +441,19 @@ def main():
         print("Port open success")
 
         # CMD_CONNECT used for auto baud detection on stm32
-        Serial_Port.write(int_to_bytes(CMD_CONNECT))
 
-        if(stm32_read_ack() == False):
+        retry = 10
+        connected = False
+        while(retry):
+            retry -= 1
+            Serial_Port.write(int_to_bytes(CMD_CONNECT))
+            if(stm32_read_ack() == False):
+                time.sleep(100)
+            else:
+                connected = True
+                break
+
+        if(connected == False):
             print("stm32 device connection failed")
         else:
             print("connected to stm32 device")

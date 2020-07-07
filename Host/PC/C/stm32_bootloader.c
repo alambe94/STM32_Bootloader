@@ -573,9 +573,27 @@ int main(int argc, char *argv[])
 
       // CMD_CONNECT used for auto baud detection on stm32
       uint8_t temp = CMD_CONNECT;
-      Serial_Port_Write(Serial_Handle, &temp, 1);
+      uint8_t retry = 10;
+      uint8_t connected = 0;
 
-      if (!stm32_read_ack())
+      while (retry--)
+      {
+         Serial_Port_Write(Serial_Handle, &temp, 1);
+
+         if (!stm32_read_ack())
+         {
+            uint32_t delay = system_current_time_millis();
+            while (system_current_time_millis() - delay < 100)
+               ;
+         }
+         else
+         {
+            connected = 1;
+            break;
+         }
+      }
+
+      if (!connected)
       {
          printf("stm32 device connection failed\n");
       }

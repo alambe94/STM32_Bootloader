@@ -4,12 +4,10 @@
 #include "comm_interface.h"
 #include "usart.h"
 
-#define BL_AUTO_BAUD 1
-
 /** default baud */
-#define BL_BAUD 1000000
+#define BL_BAUD 115200
 
-UART_HandleTypeDef *BL_UART = &huart2;
+UART_HandleTypeDef *BL_UART = &huart6;
 
 static volatile uint8_t BL_UART_RX_INT_Count;
 static volatile uint32_t Tick_Value;
@@ -59,9 +57,9 @@ int BL_UART_Get_Char(uint32_t timeout)
  * @brief get character
  * @param timeout
  */
-int BL_UART_Get_Chars(uint8_t *buffer, uint32_t count, uint32_t timeout)
+int BL_UART_Get_Chars(char *buffer, uint32_t count, uint32_t timeout)
 {
-    if (HAL_UART_Receive(BL_UART, buffer, count, timeout) == HAL_OK)
+    if (HAL_UART_Receive(BL_UART, (uint8_t*)buffer, count, timeout) == HAL_OK)
     {
         return count;
     }
@@ -69,6 +67,7 @@ int BL_UART_Get_Chars(uint8_t *buffer, uint32_t count, uint32_t timeout)
     return -1;
 }
 
+#if (BL_AUTO_BAUD == 1)
 static void BL_UART_RX_INT_Reset(void)
 {
     HAL_GPIO_DeInit(GPIOA, GPIO_PIN_3);
@@ -91,6 +90,7 @@ static void BL_UART_RX_INT_Init(void)
     HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
     HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 }
+#endif
 
 uint8_t BL_UART_Init()
 {
@@ -110,7 +110,7 @@ uint8_t BL_UART_Init()
     BL_UART_RX_INT_Init();
 
     /* wait for two rising edge interrupts on uart rx pin */
-    uint32_t timeout = 5 * HAL_RCC_GetHCLKFreq();
+    uint32_t timeout = HAL_RCC_GetHCLKFreq()/5;
     while (BL_UART_RX_INT_Count < 2 && --timeout)
         ;
 
@@ -133,7 +133,7 @@ uint8_t BL_UART_Init()
     BL_UART->Init.BaudRate = baud;
 
     /* init uart with new baud */
-    if (HAL_UART_Init(&huart2) != HAL_OK)
+    if (HAL_UART_Init(BL_UART) != HAL_OK)
     {
         Error_Handler();
     }
@@ -146,6 +146,7 @@ void BL_UART_Deinit()
     HAL_UART_DeInit(BL_UART);
 }
 
+#if (BL_AUTO_BAUD == 1)
 /**
  * @brief This function handles uart rx pin interrupt.
  */
@@ -170,3 +171,4 @@ void EXTI3_IRQHandler(void)
 
     /* USER CODE END EXTI3_IRQn 1 */
 }
+#endif

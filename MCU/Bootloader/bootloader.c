@@ -45,8 +45,8 @@
 
 #define BL_DEBUG 1
 
-#define BL_RX_BUFFER_SIZE (256)
-#define BL_TX_BUFFER_SIZE (256)
+#define BL_RX_BUFFER_SIZE (1024)
+#define BL_TX_BUFFER_SIZE (1024)
 
 static uint8_t BL_RX_Buffer[BL_RX_BUFFER_SIZE];
 static uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
@@ -232,7 +232,7 @@ static void (*BL_Send_Char)(char data);
 static void (*BL_Send_Chars)(char *data, uint32_t count);
 
 static int (*BL_Get_Char)(uint32_t timeout);
-static int (*BL_Get_Chars)(uint8_t *buffer, uint32_t count, uint32_t timeout);
+static int (*BL_Get_Chars)(char *buffer, uint32_t count, uint32_t timeout);
 
 /**
  * @}
@@ -408,17 +408,16 @@ static void BL_Read_Callback(uint32_t address, uint32_t len)
 
     if (address >= USER_FLASH_START_ADDRESS && address <= USER_FLASH_END_ADDRESS - len)
     {
-        BL_Send_Char(BL_CMD_ACK);
+        BL_TX_Buffer[0] = BL_CMD_ACK;
 
-        for (uint8_t i = 0; i < len; i++)
+        for (uint8_t i = 1; i <= len; i++)
         {
             BL_TX_Buffer[i] = add_ptr[i];
-            BL_Send_Char(BL_TX_Buffer[i]);
         }
+        crc = BL_CRC8(BL_TX_Buffer + 1, len);
+        BL_TX_Buffer[len + 1] = crc;
 
-        crc = BL_CRC8(BL_TX_Buffer, len);
-
-        BL_Send_Char(crc);
+        BL_Send_Chars((char *)BL_TX_Buffer, len + 2);
     }
     else
     {
@@ -508,15 +507,10 @@ static void BL_Get_Version_Callback(void)
 
 static void BL_Loop(void)
 {
-    /* send ack for connect cmd*/
-    BL_Send_Char(BL_CMD_ACK);
-
     while (1)
     {
-        memset(BL_RX_Buffer, 0x00, BL_RX_BUFFER_SIZE);
-
         /* wait for sync char*/
-        uint8_t sync_char = BL_Get_Char(100);
+        int sync_char = BL_Get_Char(10);
 
         if (sync_char != -1)
         {
@@ -534,7 +528,7 @@ static void BL_Loop(void)
 
                 if (packet_len != -1)
                 {
-                    if (BL_Get_Chars(BL_RX_Buffer, packet_len, 5000) != -1)
+                    if (BL_Get_Chars((char *)BL_RX_Buffer, packet_len, 5000) != -1)
                     {
                         uint8_t cmd = BL_RX_Buffer[0];
 
@@ -605,35 +599,47 @@ void BL_Main(void)
 {
     HAL_Delay(1);
 
-/** if enabled directly jump to bootloader. */
-#if (BL_DEBUG == 1)
-    BL_Loop();
-#endif
-
-    /** if pin is low enter bootloader */
-    if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET)
+    /** if pin is low enter bootloader, debug flag is enabled */
+    if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET || BL_DEBUG)
     {
-        if (BL_UART_Init())
+        BL_UART_Init();
+
+        while (1)
         {
-            /** if any activity is detected on uart choose uart interface */
-            BL_COMM_Deinit = BL_UART_Deinit;
+            int uart_char = BL_UART_Get_Char(100);
+            if (uart_char == BL_CMD_CONNECT)
+            {
+                /* send ack for connect cmd*/
+                BL_UART_Send_Char(BL_CMD_ACK);
 
-            BL_Send_Char = BL_UART_Send_Char;
-            BL_Send_Chars = BL_UART_Send_Chars;
+                /** if any activity is detected on uart choose uart interface */
+                BL_COMM_Deinit = BL_UART_Deinit;
 
-            BL_Get_Char = BL_UART_Get_Char;
-            BL_Get_Chars = BL_UART_Get_Chars;
-        }
-        else
-        {
-            /** choose usb cdc */
-            BL_COMM_Deinit = BL_CDC_Deinit;
+                BL_Send_Char = BL_UART_Send_Char;
+                BL_Send_Chars = BL_UART_Send_Chars;
 
-            BL_Send_Char = BL_CDC_Send_Char;
-            BL_Send_Chars = BL_CDC_Send_Chars;
+                BL_Get_Char = BL_UART_Get_Char;
+                BL_Get_Chars = BL_UART_Get_Chars;
+                break;
+            }
+#if(USE_USB_CDC == 1)
+            int cdc_char = BL_CDC_Get_Char(100);
+            if (cdc_char == BL_CMD_CONNECT)
+            {
+                /* send ack for connect cmd*/
+                BL_CDC_Send_Char(BL_CMD_ACK);
 
-            BL_Get_Char = BL_CDC_Get_Char;
-            BL_Get_Chars = BL_CDC_Get_Chars;
+                /** choose usb cdc */
+                BL_COMM_Deinit = BL_CDC_Deinit;
+
+                BL_Send_Char = BL_CDC_Send_Char;
+                BL_Send_Chars = BL_CDC_Send_Chars;
+
+                BL_Get_Char = BL_CDC_Get_Char;
+                BL_Get_Chars = BL_CDC_Get_Chars;
+                break;
+            }
+#endif
         }
 
         BL_Loop();
