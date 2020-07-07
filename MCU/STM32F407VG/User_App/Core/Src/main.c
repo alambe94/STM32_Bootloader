@@ -97,6 +97,9 @@ int main(void)
        "0x08004000UL for 16K of bootloader size"
 #endif
 
+  /** enable interrupts, bootloader might disable interrupts before jump */
+  __enable_irq();
+
   __HAL_RCC_BKPSRAM_CLK_ENABLE();
 
   for(uint8_t i=0; i<10; i++)

@@ -474,7 +474,7 @@ static void BL_Jump_Callback(void)
     BL_UART_Deinit();
 
     /** disable interrupts */
-    //__disable_irq();
+    __disable_irq();
 
     stack_pointer = *(__IO uint32_t *)USER_FLASH_START_ADDRESS;
     reset_vector = *(__IO uint32_t *)(USER_FLASH_START_ADDRESS + 4);
