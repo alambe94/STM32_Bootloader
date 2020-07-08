@@ -124,7 +124,7 @@ static uint8_t BL_TX_Buffer[BL_TX_BUFFER_SIZE];
 #define BL_USED_SECTORS 2          // 16KB*2
 
 #define USER_FLASH_START_ADDRESS (0x08000000 + BL_USED_SECTORS * BL_SECTOR_SIZE)
-#define USER_FLASH_END_ADDRESS (0x08000000 + 1024 * 1024) // 32KB used by bootloader remaing
+#define USER_FLASH_END_ADDRESS (0x08000000 + 1024 * 1024) // 32KB used by bootloader remaining
 #endif
 
 /*
@@ -232,7 +232,7 @@ static void (*BL_Send_Char)(char data);
 static void (*BL_Send_Chars)(char *data, uint32_t count);
 
 static int (*BL_Get_Char)(uint32_t timeout);
-static int (*BL_Get_Chars)(char *buffer, uint32_t count, uint32_t timeout);
+static uint32_t (*BL_Get_Chars)(char *buffer, uint32_t count, uint32_t timeout);
 
 /**
  * @}
@@ -263,7 +263,7 @@ static uint8_t BL_CRC8(uint8_t *data, uint8_t len)
 }
 
 /**
- * @brief earse stm32 flash
+ * @brief erase stm32 flash
  * @note erase mode depends upon mcu family
  */
 static uint8_t ST_Erase_Flash(void)
@@ -359,7 +359,7 @@ static void BL_Write_Callback(uint32_t address, const uint8_t *data, uint32_t le
  * @brief verify data at given flash address
  * @param address address where flash is to be verified
  * @param data input data buffer
- * @param len amount of data to be writtn
+ * @param len amount of data to be written
  */
 static void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t len)
 {
@@ -426,7 +426,7 @@ static void BL_Read_Callback(uint32_t address, uint32_t len)
 }
 
 /**
- * @brief earse stm32 flash and ack if success
+ * @brief erase stm32 flash and ack if success
  */
 static void BL_Erase_Callback(void)
 {
@@ -481,6 +481,8 @@ static void BL_Jump_Callback(void)
 
     pFunction = (void (*)(void))reset_vector;
 
+    /** a code is considered valid if the MSB of the initial Main Stack Pointer (MSP) value located in
+     *  the first address of the application area is equal to 0x2000 */
     if ((stack_pointer & 0x20000000) == 0x20000000)
     {
         /* Initialize user application's Stack Pointer */
@@ -514,6 +516,47 @@ static void BL_Get_Version_Callback(void)
 
 static void BL_Loop(void)
 {
+    /** try auto baud if enabled */
+    BL_UART_Init();
+
+    while (1)
+    {
+        int uart_char = BL_UART_Get_Char(100);
+        if (uart_char == BL_CMD_CONNECT)
+        {
+            /* send ack for connect cmd*/
+            BL_UART_Send_Char(BL_CMD_ACK);
+
+            /** if any activity is detected on uart choose uart interface */
+            BL_COMM_Deinit = BL_UART_Deinit;
+
+            BL_Send_Char = BL_UART_Send_Char;
+            BL_Send_Chars = BL_UART_Send_Chars;
+
+            BL_Get_Char = BL_UART_Get_Char;
+            BL_Get_Chars = BL_UART_Get_Chars;
+            break;
+        }
+#if (USE_USB_CDC == 1)
+        int cdc_char = BL_CDC_Get_Char(100);
+        if (cdc_char == BL_CMD_CONNECT)
+        {
+            /* send ack for connect cmd*/
+            BL_CDC_Send_Char(BL_CMD_ACK);
+
+            /** choose usb cdc */
+            BL_COMM_Deinit = BL_CDC_Deinit;
+
+            BL_Send_Char = BL_CDC_Send_Char;
+            BL_Send_Chars = BL_CDC_Send_Chars;
+
+            BL_Get_Char = BL_CDC_Get_Char;
+            BL_Get_Chars = BL_CDC_Get_Chars;
+            break;
+        }
+#endif
+    }
+
     while (1)
     {
         /* wait for sync char*/
@@ -535,7 +578,7 @@ static void BL_Loop(void)
 
                 if (packet_len != -1)
                 {
-                    if (BL_Get_Chars((char *)BL_RX_Buffer, packet_len, 5000) != -1)
+                    if (BL_Get_Chars((char *)BL_RX_Buffer, packet_len, 5000) == packet_len)
                     {
                         uint8_t cmd = BL_RX_Buffer[0];
 
@@ -624,56 +667,19 @@ void BL_Main(void)
     /** if pin is low enter bootloader, magic number is set or debug flag is enabled */
     if (HAL_GPIO_ReadPin(Boot_GPIO_Port, Boot_Pin) == GPIO_PIN_RESET || magic_number == 0xA5 || BL_DEBUG)
     {
-        BL_UART_Init();
-
-        while (1)
-        {
-            int uart_char = BL_UART_Get_Char(100);
-            if (uart_char == BL_CMD_CONNECT)
-            {
-                /* send ack for connect cmd*/
-                BL_UART_Send_Char(BL_CMD_ACK);
-
-                /** if any activity is detected on uart choose uart interface */
-                BL_COMM_Deinit = BL_UART_Deinit;
-
-                BL_Send_Char = BL_UART_Send_Char;
-                BL_Send_Chars = BL_UART_Send_Chars;
-
-                BL_Get_Char = BL_UART_Get_Char;
-                BL_Get_Chars = BL_UART_Get_Chars;
-                break;
-            }
-#if (USE_USB_CDC == 1)
-            int cdc_char = BL_CDC_Get_Char(100);
-            if (cdc_char == BL_CMD_CONNECT)
-            {
-                /* send ack for connect cmd*/
-                BL_CDC_Send_Char(BL_CMD_ACK);
-
-                /** choose usb cdc */
-                BL_COMM_Deinit = BL_CDC_Deinit;
-
-                BL_Send_Char = BL_CDC_Send_Char;
-                BL_Send_Chars = BL_CDC_Send_Chars;
-
-                BL_Get_Char = BL_CDC_Get_Char;
-                BL_Get_Chars = BL_CDC_Get_Chars;
-                break;
-            }
-#endif
-        }
-
         BL_Loop();
     }
     /** else jump to application */
     BL_Jump_Callback();
+
+    /** if jump failed stay in bootloader */
+    BL_Loop();
 }
 
 /**
  * @}
  */
-/* End of Bootloader_Implementaiion */
+/* End of Bootloader_Implementation */
 
 /**
  * @}

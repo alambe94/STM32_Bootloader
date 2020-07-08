@@ -58,7 +58,7 @@ int BL_UART_Get_Char(uint32_t timeout)
  * @param timeout
  * @retval number chars received
  */
-int BL_UART_Get_Chars(char *buffer, uint32_t count, uint32_t timeout)
+uint32_t BL_UART_Get_Chars(char *buffer, uint32_t count, uint32_t timeout)
 {
     if (HAL_UART_Receive(BL_UART, (uint8_t*)buffer, count, timeout) == HAL_OK)
     {
