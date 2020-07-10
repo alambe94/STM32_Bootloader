@@ -132,6 +132,8 @@ void CDC_Receive_FS_ISR(uint8_t *buff, uint32_t len)
 
 uint8_t BL_CDC_Init()
 {
+    extern void MX_USB_DEVICE_Init(void);
+    MX_USB_DEVICE_Init();
     return 1;
 }
 

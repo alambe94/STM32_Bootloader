@@ -7,7 +7,7 @@
 /** default baud */
 #define BL_BAUD 115200
 
-UART_HandleTypeDef *BL_UART = &huart6; // huart2 or huart6
+UART_HandleTypeDef *BL_UART = &huart2; // huart2 or huart6
 
 static volatile uint8_t BL_UART_RX_INT_Count;
 static volatile uint32_t Tick_Value;

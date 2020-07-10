@@ -658,10 +658,15 @@ void BL_Main(void)
     __HAL_RCC_BKP_CLK_ENABLE();
     magic_number = BKP->DR1 & 0x0000FFFF;
     BKP->DR1 = 0x00;
-#elif defined(STM32F407xx) || defined(STM32F401xE)
+#elif defined(STM32F407xx)
     __HAL_RCC_BKPSRAM_CLK_ENABLE();
     magic_number = *(__IO uint8_t *)0x40024000;
     *(__IO uint8_t *)0x40024000 = 0x00;
+#elif defined(STM32F401xE)
+    __HAL_RCC_RTC_CONFIG(RCC_RTCCLKSOURCE_LSI);
+    __HAL_RCC_RTC_ENABLE();
+    magic_number = RTC->BKP0R;
+    RTC->BKP0R = 0x00;
 #endif
 
     /** if pin is low enter bootloader, magic number is set or debug flag is enabled */
