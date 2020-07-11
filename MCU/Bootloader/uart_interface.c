@@ -98,6 +98,8 @@ uint8_t BL_UART_Init()
     uint32_t baud = BL_BAUD;
     uint8_t xreturn = 0;
 
+    MX_USART2_UART_Init(); //  MX_USART2_UART_Init(), MX_USART6_UART_Init(); for 407
+
 #if (BL_AUTO_BAUD == 1)
     /* auto baud detection ST AN4908 */
 

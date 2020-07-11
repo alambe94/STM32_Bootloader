@@ -88,9 +88,10 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_USART2_UART_Init();
-  MX_USB_DEVICE_Init();
+  //MX_USART2_UART_Init();
+  //MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
+  /** uart or cdc will be init if in bootloader */
   BL_Main();
   /* USER CODE END 2 */
 

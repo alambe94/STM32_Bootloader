@@ -223,6 +223,7 @@ static void BL_Verify_Callback(uint32_t address, const uint8_t *data, uint8_t le
 static void BL_Read_Callback(uint32_t address, uint32_t len);
 static void BL_Erase_Callback(void);
 static void BL_Jump_Callback(void);
+static void BL_Jump(void);
 static void BL_Get_Version_Callback(void);
 static void BL_Loop(void);
 
@@ -455,11 +456,6 @@ static void BL_Reset_Callback(void)
  */
 static void BL_Jump_Callback(void)
 {
-    uint32_t reset_vector = 0;
-    uint32_t stack_pointer = 0;
-
-    void (*pFunction)(void);
-
     if (BL_Send_Char)
     {
         BL_Send_Char(BL_CMD_ACK);
@@ -468,10 +464,36 @@ static void BL_Jump_Callback(void)
     HAL_DeInit();
 
     /** deinit uart or cdc */
-#if (USE_USB_CDC)
-    BL_CDC_Deinit();
-#endif
-    BL_UART_Deinit();
+    BL_COMM_Deinit();
+
+    BL_Jump();
+}
+
+/**
+ * @brief send current bootloader version
+ */
+static void BL_Get_Version_Callback(void)
+{
+    uint8_t crc;
+
+    BL_Send_Char(BL_CMD_ACK);
+
+    crc = BL_CRC8(BL_Version, 3);
+
+    BL_Send_Char(BL_Version[0]);
+    BL_Send_Char(BL_Version[1]);
+    BL_Send_Char(BL_Version[2]);
+    BL_Send_Char(crc);
+}
+
+/**
+ * @brief jump to user application
+ */
+static void BL_Jump(void)
+{
+    uint32_t reset_vector = 0;
+    uint32_t stack_pointer = 0;
+    void (*pFunction)(void);
 
     /** disable interrupts */
     __disable_irq();
@@ -494,23 +516,6 @@ static void BL_Jump_Callback(void)
 }
 
 /**
- * @brief send current bootloader version
- */
-static void BL_Get_Version_Callback(void)
-{
-    uint8_t crc;
-
-    BL_Send_Char(BL_CMD_ACK);
-
-    crc = BL_CRC8(BL_Version, 3);
-
-    BL_Send_Char(BL_Version[0]);
-    BL_Send_Char(BL_Version[1]);
-    BL_Send_Char(BL_Version[2]);
-    BL_Send_Char(crc);
-}
-
-/**
  * @brief bootloader main process loop
  */
 
@@ -518,6 +523,10 @@ static void BL_Loop(void)
 {
     /** try auto baud if enabled */
     BL_UART_Init();
+
+#if (USE_USB_CDC == 1)
+    BL_CDC_Init();
+#endif
 
     while (1)
     {
@@ -675,7 +684,7 @@ void BL_Main(void)
         BL_Loop();
     }
     /** else jump to application */
-    BL_Jump_Callback();
+    BL_Jump();
 
     /** if jump failed stay in bootloader */
     BL_Loop();
